@@ -1,0 +1,107 @@
+:root {
+    --admin-primary: #1a1a2e;
+    --admin-accent: #c9a962;
+    --admin-sidebar: #16213e;
+}
+
+body.admin-body {
+    background: #f4f5f7;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+.admin-sidebar {
+    background: var(--admin-sidebar);
+    min-height: 100vh;
+    width: 260px;
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 1000;
+    padding: 1.5rem 0;
+}
+
+.admin-sidebar .brand {
+    color: var(--admin-accent);
+    font-size: 1.1rem;
+    letter-spacing: 0.1em;
+    padding: 0 1.5rem 1.5rem;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    margin-bottom: 1rem;
+}
+
+.admin-sidebar .nav-link {
+    color: rgba(255,255,255,0.75);
+    padding: 0.75rem 1.5rem;
+    font-size: 0.9rem;
+    border-left: 3px solid transparent;
+    transition: all 0.2s;
+}
+
+.admin-sidebar .nav-link:hover,
+.admin-sidebar .nav-link.active {
+    color: #fff;
+    background: rgba(201, 169, 98, 0.1);
+    border-left-color: var(--admin-accent);
+}
+
+.admin-main {
+    margin-left: 260px;
+    padding: 2rem;
+    min-height: 100vh;
+}
+
+.stat-card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 1.5rem;
+    border-left: 4px solid var(--admin-accent);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.stat-card h3 {
+    font-size: 2rem;
+    margin: 0;
+    color: var(--admin-primary);
+}
+
+.admin-card {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    padding: 1.5rem;
+}
+
+.thumb-preview {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.login-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+}
+
+.login-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 2.5rem;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+@media (max-width: 992px) {
+    .admin-sidebar {
+        width: 100%;
+        min-height: auto;
+        position: relative;
+    }
+    .admin-main {
+        margin-left: 0;
+    }
+}

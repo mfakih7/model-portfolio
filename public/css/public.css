@@ -1,0 +1,683 @@
+:root {
+    --color-black: #070707;
+    --color-bg-alt: #0b0b0b;
+    /* Primary heading / high-emphasis text */
+    --color-white: #f5f0e8;
+    /* Default body / paragraph text — light enough to read on black */
+    --color-text: #cfc6b8;
+    /* Muted / secondary text */
+    --color-muted: #afa695;
+    --color-gold: #c9a45c;
+    --color-gold-light: #e3c98a;
+    --color-beige: #cfc6b8;
+    --color-dark: #141414;
+    --font-display: 'Cormorant Garamond', Georgia, serif;
+    --font-body: 'Montserrat', system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    font-family: var(--font-body);
+    background: var(--color-black);
+    color: var(--color-text);
+    font-size: 1.0625rem;
+    line-height: 1.75;
+    font-weight: 300;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+}
+
+p {
+    color: var(--color-text);
+    line-height: 1.75;
+}
+
+h1, h2, h3, h4, h5, h6, .display-font {
+    font-family: var(--font-display);
+    font-weight: 300;
+    letter-spacing: 0.04em;
+    color: var(--color-white);
+}
+
+.text-gold { color: var(--color-gold) !important; }
+.bg-gold { background-color: var(--color-gold) !important; }
+
+/* ---------------------------------------------------------------------------
+   Typography & readability (dark luxury theme)
+   Bootstrap's default .text-muted is near-black and unreadable on dark
+   backgrounds, so it is remapped here to an elegant, legible muted tone.
+--------------------------------------------------------------------------- */
+.text-luxury { color: var(--color-white) !important; }
+
+.text-muted,
+.text-muted-luxury {
+    color: var(--color-muted) !important;
+}
+
+.lead {
+    font-size: clamp(1.05rem, 1.4vw, 1.25rem);
+    line-height: 1.8;
+    font-weight: 300;
+    color: var(--color-text);
+}
+
+.hero-description,
+.section-description,
+.portfolio-description {
+    color: var(--color-text);
+    font-size: clamp(1rem, 1.2vw, 1.15rem);
+    line-height: 1.8;
+    font-weight: 300;
+}
+
+/* Keep small print legible without losing its secondary hierarchy */
+.small, small { font-size: 0.9rem; }
+
+/* Navbar */
+.navbar-public {
+    background: transparent;
+    transition: background 0.4s ease, padding 0.3s ease;
+    padding: 1.25rem 0;
+}
+
+.navbar-public.scrolled {
+    background: rgba(10, 10, 10, 0.95);
+    backdrop-filter: blur(12px);
+    padding: 0.75rem 0;
+    border-bottom: 1px solid rgba(201, 169, 98, 0.15);
+}
+
+/* Shared luxury underline link (navbar, footer quick links, category filter) */
+.luxury-link,
+.navbar-public .nav-link,
+.footer-quick-links a {
+    position: relative;
+    display: inline-block;
+    color: var(--color-muted);
+    text-decoration: none;
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 0.5rem 0;
+    transition: color 0.3s ease;
+}
+
+.luxury-link::after,
+.navbar-public .nav-link::after,
+.footer-quick-links a::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 0;
+    height: 1px;
+    background: var(--color-gold);
+    transition: width 0.3s ease;
+}
+
+.luxury-link:hover,
+.luxury-link.active,
+.navbar-public .nav-link:hover,
+.navbar-public .nav-link.active,
+.footer-quick-links a:hover,
+.footer-quick-links a.active {
+    color: var(--color-gold);
+}
+
+.luxury-link:hover::after,
+.luxury-link.active::after,
+.navbar-public .nav-link:hover::after,
+.navbar-public .nav-link.active::after,
+.footer-quick-links a:hover::after,
+.footer-quick-links a.active::after {
+    width: 100%;
+}
+
+.navbar-public .nav-link {
+    margin: 0 1rem;
+}
+
+.navbar-brand {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    color: var(--color-white) !important;
+    letter-spacing: 0.15em;
+}
+
+.navbar-public .navbar-toggler {
+    border-color: rgba(201, 169, 98, 0.5);
+}
+
+.navbar-public .navbar-toggler-icon {
+    filter: invert(1);
+}
+
+/* Hero */
+.hero-section {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    position: relative;
+    background-size: cover;
+    background-position: center top;
+}
+
+.hero-section::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(10,10,10,0.85) 0%, rgba(10,10,10,0.4) 50%, rgba(10,10,10,0.75) 100%);
+}
+
+.hero-content {
+    position: relative;
+    z-index: 2;
+}
+
+.hero-title {
+    font-size: clamp(3rem, 8vw, 6rem);
+    line-height: 1.05;
+    margin-bottom: 0.5rem;
+}
+
+.hero-subtitle {
+    font-size: clamp(0.9rem, 2vw, 1.1rem);
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--color-gold);
+}
+
+.btn-luxury {
+    background: transparent;
+    border: 1px solid var(--color-gold);
+    color: var(--color-gold);
+    padding: 0.85rem 2.5rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    transition: all 0.4s ease;
+    border-radius: 0;
+}
+
+.btn-luxury:hover {
+    background: var(--color-gold);
+    color: var(--color-black);
+    border-color: var(--color-gold);
+}
+
+.btn-luxury-filled {
+    background: var(--color-gold);
+    color: var(--color-black);
+    border: 1px solid var(--color-gold);
+}
+
+.btn-luxury-filled:hover {
+    background: var(--color-gold-light);
+    border-color: var(--color-gold-light);
+}
+
+/* Sections */
+.section-padding {
+    padding: 6rem 0;
+}
+
+.section-label {
+    font-size: 0.7rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--color-gold);
+    margin-bottom: 1rem;
+    display: block;
+}
+
+/* Portfolio grid */
+.portfolio-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+
+.portfolio-item {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 3/4;
+    cursor: pointer;
+    background: var(--color-dark);
+}
+
+.portfolio-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.4s;
+    opacity: 0;
+}
+
+.portfolio-item img.loaded {
+    opacity: 1;
+}
+
+.portfolio-item:hover img.loaded {
+    transform: scale(1.08);
+    opacity: 0.9;
+}
+
+/* Clickable "open preview" affordance */
+.zoom-hint {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.8);
+    z-index: 3;
+    width: 54px;
+    height: 54px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(201, 164, 92, 0.92);
+    color: #0a0a0a;
+    font-size: 1.3rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.portfolio-item:hover .zoom-hint,
+.featured-card:hover .zoom-hint {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.portfolio-item .overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(transparent 50%, rgba(0,0,0,0.8));
+    opacity: 0;
+    transition: opacity 0.4s;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 1.5rem;
+}
+
+.portfolio-item:hover .overlay {
+    opacity: 1;
+}
+
+/* Skeleton loader */
+.skeleton {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, #1a1a1a 25%, #2a2a2a 50%, #1a1a1a 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Category filter menu */
+.category-filters {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 2rem;
+    margin: 3rem 0;
+}
+
+.category-filter {
+    position: relative;
+    background: transparent;
+    border: none;
+    padding: 0.5rem 0;
+    color: var(--color-muted);
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    text-decoration: none;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+.category-filter::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 0;
+    height: 1px;
+    background: var(--color-gold);
+    transition: width 0.3s ease;
+}
+
+.category-filter:hover,
+.category-filter.active {
+    color: var(--color-gold);
+}
+
+.category-filter:hover::after,
+.category-filter.active::after {
+    width: 100%;
+}
+
+/* Featured cards */
+.featured-card {
+    overflow: hidden;
+    position: relative;
+    aspect-ratio: 3/4;
+    cursor: pointer;
+}
+
+.featured-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s ease, opacity 0.3s ease;
+}
+
+.featured-card:hover img {
+    transform: scale(1.05);
+    opacity: 0.9;
+}
+
+/* About */
+.about-image-wrap {
+    position: relative;
+    overflow: hidden;
+}
+
+.about-image-wrap::after {
+    content: '';
+    position: absolute;
+    bottom: -20px;
+    right: -20px;
+    width: 60%;
+    height: 60%;
+    border: 1px solid var(--color-gold);
+    z-index: -1;
+}
+
+/* Footer */
+.site-footer {
+    background: var(--color-dark);
+    border-top: 1px solid rgba(201, 169, 98, 0.2);
+    padding: 4rem 0 2rem;
+}
+
+.site-footer p {
+    color: var(--color-muted);
+}
+
+.site-footer a {
+    color: var(--color-text);
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+.site-footer a:hover {
+    color: var(--color-gold);
+}
+
+.social-icon {
+    width: 42px;
+    height: 42px;
+    border: 1px solid rgba(201, 169, 98, 0.4);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    margin: 0 0.35rem;
+    transition: all 0.3s;
+    color: var(--color-beige);
+}
+
+.social-icon:hover {
+    background: var(--color-gold);
+    border-color: var(--color-gold);
+    color: var(--color-black);
+}
+
+/* Contact */
+.contact-card {
+    background: var(--color-dark);
+    border: 1px solid rgba(201, 169, 98, 0.15);
+    padding: 2.5rem;
+}
+
+.form-control-luxury {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(201, 169, 98, 0.3);
+    border-radius: 0;
+    color: var(--color-white);
+    padding: 0.75rem 0;
+}
+
+.form-control-luxury:focus {
+    background: transparent;
+    color: var(--color-white);
+    border-color: var(--color-gold);
+    box-shadow: none;
+}
+
+.form-control-luxury::placeholder {
+    color: var(--color-muted);
+    opacity: 0.85;
+}
+
+/* ---------------------------------------------------------------------------
+   Lightbox (custom, full-screen overlay)
+--------------------------------------------------------------------------- */
+.lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 9998;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 5vh 4vw;
+    background: rgba(0, 0, 0, 0.88);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.35s ease, visibility 0.35s ease;
+    overflow: auto;
+}
+
+.lightbox.open {
+    opacity: 1;
+    visibility: visible;
+}
+
+.lightbox-content {
+    position: relative;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 90vw;
+    margin: auto;
+    transform: scale(0.96);
+    transition: transform 0.35s ease;
+}
+
+.lightbox.open .lightbox-content {
+    transform: scale(1);
+}
+
+.lightbox-figure {
+    display: flex;
+    justify-content: center;
+    max-width: 90vw;
+}
+
+.lightbox-image {
+    display: block;
+    max-width: 90vw;
+    max-height: 85vh;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.65);
+}
+
+.lightbox-caption {
+    width: 100%;
+    max-width: 90vw;
+    background: rgba(8, 8, 8, 0.92);
+    border: 1px solid rgba(201, 169, 98, 0.22);
+    border-top: none;
+    padding: 1.25rem 1.5rem;
+    text-align: left;
+}
+
+.lightbox-caption .lightbox-category {
+    display: block;
+    color: var(--color-gold);
+    font-size: 0.7rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    margin-bottom: 0.35rem;
+}
+
+.lightbox-caption .lightbox-title {
+    color: var(--color-white);
+    margin: 0 0 0.5rem;
+    font-size: clamp(1.25rem, 2.5vw, 1.75rem);
+}
+
+.lightbox-caption .lightbox-desc {
+    color: var(--color-text);
+    font-size: 1rem;
+    line-height: 1.7;
+    margin-bottom: 1rem;
+}
+
+.lightbox-caption .lightbox-desc:empty {
+    display: none;
+}
+
+.lightbox-close {
+    position: fixed;
+    top: 1.1rem;
+    right: 1.25rem;
+    z-index: 10000;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 1px solid rgba(201, 169, 98, 0.5);
+    background: rgba(10, 10, 10, 0.7);
+    color: var(--color-white);
+    font-size: 2rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.3s, color 0.3s, transform 0.3s;
+}
+
+.lightbox-close:hover {
+    background: var(--color-gold);
+    color: #000;
+    transform: rotate(90deg);
+}
+
+/* Disable page scroll while the lightbox is open */
+body.lightbox-open {
+    overflow: hidden;
+}
+
+/* About story */
+.story-content {
+    color: var(--color-text);
+    font-size: clamp(1rem, 1.2vw, 1.125rem);
+    line-height: 1.9;
+    font-weight: 300;
+}
+
+/* Animations */
+.fade-up {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.8s ease, transform 0.8s ease;
+}
+
+.fade-up.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* WhatsApp button */
+.btn-whatsapp {
+    background: #25d366;
+    border: none;
+    color: #fff;
+    padding: 1rem 2rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.btn-whatsapp:hover {
+    background: #20bd5a;
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(37, 211, 102, 0.3);
+}
+
+@media (max-width: 768px) {
+    .section-padding { padding: 4rem 0; }
+    .hero-section { min-height: 90vh; }
+    body { font-size: 1rem; line-height: 1.7; }
+    p { line-height: 1.7; }
+    .hero-description,
+    .section-description,
+    .portfolio-description,
+    .story-content { line-height: 1.75; }
+
+    .lightbox { padding: 0; justify-content: flex-start; }
+    .lightbox-content { max-width: 100vw; width: 100%; }
+    .lightbox-figure { max-width: 100vw; }
+    .lightbox-image { max-width: 100vw; max-height: 70vh; }
+    .lightbox-caption {
+        max-width: 100vw;
+        border-left: none;
+        border-right: none;
+        padding: 1rem 1.15rem 1.5rem;
+    }
+    .lightbox-close {
+        top: 0.75rem;
+        right: 0.75rem;
+        width: 52px;
+        height: 52px;
+        font-size: 2.1rem;
+    }
+
+    .category-filters {
+        justify-content: flex-start;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        gap: 1.5rem;
+        margin: 2.5rem 0;
+        padding: 0 1.25rem 0.75rem;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .category-filters::-webkit-scrollbar {
+        display: none;
+    }
+
+    .category-filter {
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+}

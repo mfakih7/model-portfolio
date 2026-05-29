@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600" role="img" aria-label="Image unavailable">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1a1a2e"/>
+      <stop offset="1" stop-color="#16213e"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="600" fill="url(#bg)"/>
+  <g fill="none" stroke="#c9a962" stroke-width="3" opacity="0.7">
+    <rect x="190" y="200" width="220" height="170" rx="10"/>
+    <circle cx="250" cy="255" r="22"/>
+    <path d="M205 360 L275 290 L325 340 L360 305 L395 360 Z" fill="#c9a962" stroke="none" opacity="0.85"/>
+  </g>
+  <text x="300" y="430" font-family="'Segoe UI', system-ui, sans-serif" font-size="26" letter-spacing="2" fill="#c9a962" text-anchor="middle" opacity="0.8">IMAGE UNAVAILABLE</text>
+</svg>
