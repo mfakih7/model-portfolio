@@ -138,6 +138,24 @@ h1, h2, h3, h4, h5, h6, .display-font {
     margin: 0 1rem;
 }
 
+/* Mobile: give the expanded menu a readable panel over the hero */
+@media (max-width: 991.98px) {
+    .navbar-public .navbar-collapse {
+        background: rgba(8, 8, 8, 0.97);
+        -webkit-backdrop-filter: blur(10px);
+        backdrop-filter: blur(10px);
+        margin-top: 0.75rem;
+        padding: 0.75rem 1.25rem;
+        border: 1px solid rgba(201, 164, 92, 0.18);
+        border-radius: 6px;
+    }
+    .navbar-public .nav-link {
+        margin: 0;
+        padding: 0.65rem 0;
+    }
+    .navbar-public .nav-link::after { bottom: 0.4rem; }
+}
+
 .navbar-brand {
     font-family: var(--font-display);
     font-size: 1.5rem;
@@ -234,8 +252,16 @@ h1, h2, h3, h4, h5, h6, .display-font {
 /* Portfolio grid */
 .portfolio-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 1.5rem;
+}
+
+@media (max-width: 991.98px) {
+    .portfolio-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 575.98px) {
+    .portfolio-grid { grid-template-columns: 1fr; gap: 1rem; }
 }
 
 .portfolio-item {
@@ -331,6 +357,8 @@ h1, h2, h3, h4, h5, h6, .display-font {
 
 .category-filter {
     position: relative;
+    flex: 0 0 auto;
+    white-space: nowrap;
     background: transparent;
     border: none;
     padding: 0.5rem 0;
@@ -636,6 +664,10 @@ body.lightbox-open {
 @media (max-width: 768px) {
     .section-padding { padding: 4rem 0; }
     .hero-section { min-height: 90vh; }
+    .hero-subtitle { letter-spacing: 0.22em; }
+    .hero-content .lead,
+    .hero-description { max-width: 100% !important; }
+    .btn-luxury, .btn-luxury-filled { padding: 0.8rem 1.75rem; }
     body { font-size: 1rem; line-height: 1.7; }
     p { line-height: 1.7; }
     .hero-description,
@@ -665,11 +697,17 @@ body.lightbox-open {
         justify-content: flex-start;
         flex-wrap: nowrap;
         overflow-x: auto;
-        gap: 1.5rem;
-        margin: 2.5rem 0;
-        padding: 0 1.25rem 0.75rem;
-        scrollbar-width: none;
+        overflow-y: hidden;
+        gap: 1.75rem;
+        /* Full-bleed: break out of the container's 0.75rem gutter so the strip
+           reaches the screen edges, making it obvious it can be swiped. The
+           inner padding keeps the first/last items off the edge. */
+        margin: 2.25rem -0.75rem;
+        padding: 0 1.25rem 0.85rem;
+        scroll-snap-type: x proximity;
         -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
     }
 
     .category-filters::-webkit-scrollbar {
@@ -677,7 +715,6 @@ body.lightbox-open {
     }
 
     .category-filter {
-        flex: 0 0 auto;
-        white-space: nowrap;
+        scroll-snap-align: start;
     }
 }

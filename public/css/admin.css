@@ -12,12 +12,39 @@ body.admin-body {
 .admin-sidebar {
     background: var(--admin-sidebar);
     min-height: 100vh;
+    height: 100%;
     width: 260px;
     position: fixed;
     left: 0;
     top: 0;
-    z-index: 1000;
+    z-index: 1045;
     padding: 1.5rem 0;
+    overflow-y: auto;
+    transition: transform 0.3s ease;
+}
+
+/* Mobile top bar + drawer (hidden on desktop) */
+.admin-topbar { display: none; }
+.sidebar-backdrop { display: none; }
+
+.admin-topbar-toggle {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #fff;
+    width: 42px;
+    height: 42px;
+    border-radius: 6px;
+    font-size: 1.35rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+}
+
+.admin-topbar-brand {
+    color: var(--admin-accent);
+    letter-spacing: 0.08em;
+    font-size: 1rem;
 }
 
 .admin-sidebar .brand {
@@ -83,6 +110,7 @@ body.admin-body {
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 1.25rem;
     background: linear-gradient(135deg, #1a1a2e, #16213e);
 }
 
@@ -95,13 +123,69 @@ body.admin-body {
     box-shadow: 0 20px 60px rgba(0,0,0,0.3);
 }
 
-@media (max-width: 992px) {
-    .admin-sidebar {
-        width: 100%;
-        min-height: auto;
-        position: relative;
+@media (max-width: 575.98px) {
+    .login-card {
+        padding: 1.75rem 1.35rem;
     }
+}
+
+/* Tablet & mobile: collapse the sidebar into a slide-in drawer */
+@media (max-width: 991.98px) {
+    .admin-sidebar {
+        transform: translateX(-100%);
+        box-shadow: 0 0 40px rgba(0, 0, 0, 0.45);
+    }
+    .admin-sidebar.show {
+        transform: translateX(0);
+    }
+
     .admin-main {
         margin-left: 0;
+        padding: 1.25rem;
+    }
+
+    .admin-topbar {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        position: sticky;
+        top: 0;
+        z-index: 1030;
+        background: var(--admin-sidebar);
+        padding: 0.65rem 1rem;
+    }
+
+    .sidebar-backdrop.show {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 1040;
+        background: rgba(0, 0, 0, 0.5);
+    }
+
+    body.sidebar-open {
+        overflow: hidden;
+    }
+
+    .stat-card h3 {
+        font-size: 1.65rem;
+    }
+
+    /* Keep action buttons from overflowing their row */
+    .admin-main .btn {
+        white-space: normal;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .admin-main {
+        padding: 1rem 0.85rem;
+    }
+    .admin-card {
+        padding: 1.15rem;
+    }
+    .page-actions-wrap,
+    .d-flex.justify-content-between {
+        gap: 0.5rem;
     }
 }

@@ -9,7 +9,16 @@
     <link href="{{ asset('css/admin.css') }}" rel="stylesheet">
 </head>
 <body class="admin-body">
-    <aside class="admin-sidebar d-none d-lg-block">
+    <header class="admin-topbar d-lg-none">
+        <button class="admin-topbar-toggle" type="button" id="sidebarToggle" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="adminSidebar">
+            <i class="bi bi-list"></i>
+        </button>
+        <span class="admin-topbar-brand"><i class="bi bi-gem me-2"></i>Portfolio Admin</span>
+    </header>
+
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <aside class="admin-sidebar" id="adminSidebar">
         <div class="brand"><i class="bi bi-gem me-2"></i>Portfolio Admin</div>
         <nav class="nav flex-column">
             <a class="nav-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}" href="{{ route('admin.dashboard') }}"><i class="bi bi-speedometer2 me-2"></i> Dashboard</a>
@@ -36,7 +45,7 @@
             <div class="alert alert-danger alert-dismissible fade show">{{ session('error') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
         @endif
 
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
             <h1 class="h3 mb-0">@yield('page_title', 'Dashboard')</h1>
             @yield('page_actions')
         </div>
@@ -45,6 +54,7 @@
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ asset('js/admin.js') }}"></script>
     @stack('scripts')
 </body>
 </html>
