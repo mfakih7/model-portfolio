@@ -10,18 +10,10 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Interfaces\ImageInterface;
-use Intervention\Image\Drivers\Gd\Driver as GdDriver;
-use Intervention\Image\Drivers\Imagick\Driver as ImagickDriver;
 use Throwable;
 
 /**
  * Generates optimized portfolio image variants using Intervention Image.
- *
- * Flow:
- *  1. Store the raw upload to disk (no decode).
- *  2. Read once, orient, flatten PNG transparency, scale down to a working size.
- *  3. Save an optimized "original" and generate large / medium / thumb from it.
- *  4. If variant generation fails, fall back to the stored upload for all paths.
  */
 class PortfolioImageService
 {
@@ -31,7 +23,8 @@ class PortfolioImageService
 
     private const BASE_DIR = 'portfolio';
 
-    /** Longest side for the stored "original" variant (never the raw multi‑MB upload). */
+    private const VARIANT_NAMES = ['original', 'large', 'medium', 'thumb'];
+
     private int $originalMaxDimension = 2400;
 
     private int $originalQuality = 88;
@@ -94,8 +87,114 @@ class PortfolioImageService
     }
 
     /**
-     * Remove every stored variant for an image (deletes its UUID folder).
+     * Regenerate all variants inside an existing portfolio/{uuid} folder.
+     * Throws on failure — never silently falls back to source.* paths.
+     *
+     * @return array{image_path:string, image_original:string, image_large:string, image_medium:string, image_thumb:string}
      */
+    public function regenerateInFolder(string $folderRelative, string $sourceAbsolutePath, bool $force = false): array
+    {
+        $this->prepareRuntime();
+
+        $disk = Storage::disk(self::DISK);
+
+        if (! is_file($sourceAbsolutePath)) {
+            throw new PortfolioImageProcessingException("Source file not found: {$sourceAbsolutePath}");
+        }
+
+        if (! $disk->exists($folderRelative)) {
+            $disk->makeDirectory($folderRelative);
+        }
+
+        if ($force) {
+            $this->deleteGeneratedVariants($folderRelative);
+        }
+
+        $paths = $this->buildOptimizedVariants($sourceAbsolutePath, $folderRelative);
+        $this->assertVariantsExist($paths);
+        $this->cleanupRawSources($folderRelative);
+
+        return $paths;
+    }
+
+    /**
+     * Locate the best source file inside a portfolio/{uuid} folder.
+     */
+    public function findSourceInFolder(string $folderRelative): ?string
+    {
+        $disk = Storage::disk(self::DISK);
+
+        if (! $disk->exists($folderRelative)) {
+            return null;
+        }
+
+        $candidates = [];
+
+        foreach ($disk->files($folderRelative) as $file) {
+            $base = basename($file);
+
+            if (preg_match('/^(source|upload)\.(jpe?g|png|webp|gif)$/i', $base)) {
+                $candidates[] = ['priority' => 1, 'path' => $file];
+            } elseif (preg_match('/^original\.(webp|jpe?g|png)$/i', $base)) {
+                $candidates[] = ['priority' => 2, 'path' => $file];
+            } elseif (preg_match('/^large\.(webp|jpe?g|png)$/i', $base)) {
+                $candidates[] = ['priority' => 3, 'path' => $file];
+            }
+        }
+
+        if ($candidates === []) {
+            return null;
+        }
+
+        usort($candidates, fn ($a, $b) => $a['priority'] <=> $b['priority']);
+
+        return $disk->path($candidates[0]['path']);
+    }
+
+    /**
+     * Resolve the portfolio/{uuid} folder from a model's stored paths.
+     */
+    public function folderForImage(PortfolioImage $image): ?string
+    {
+        foreach (['image_original', 'image_path', 'image_large', 'image_medium', 'image_thumb'] as $column) {
+            $path = $image->getAttribute($column);
+
+            if (! $path) {
+                continue;
+            }
+
+            $dir = dirname($path);
+
+            if ($dir && $dir !== '.' && $dir !== self::BASE_DIR) {
+                return $dir;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array{image_path?:string, image_original?:string, image_large?:string, image_medium?:string, image_thumb?:string}  $paths
+     */
+    public function variantsExist(array $paths): bool
+    {
+        $disk = Storage::disk(self::DISK);
+
+        foreach (['image_original', 'image_large', 'image_medium', 'image_thumb'] as $key) {
+            $path = $paths[$key] ?? null;
+
+            if (! $path || ! $disk->exists($path)) {
+                return false;
+            }
+
+            if ($this->isRawSourcePath($path)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     public function deleteVariants(PortfolioImage $image): void
     {
         $reference = $image->image_original
@@ -178,7 +277,6 @@ class PortfolioImageService
 
         $format = $this->outputFormat();
 
-        // --- Pass 1: decode once, normalize, downscale to working size, save original ---
         $image = $this->manager()->read($sourcePath);
         $image->orient();
 
@@ -193,7 +291,6 @@ class PortfolioImageService
 
         unset($image);
 
-        // --- Pass 2: generate every variant from the smaller saved original ---
         $originalAbsolute = Storage::disk(self::DISK)->path($originalRelative);
         $paths = ['image_original' => $originalRelative];
 
@@ -219,8 +316,63 @@ class PortfolioImageService
     }
 
     /**
-     * Last-resort variant generation from a stored upload when the full pipeline fails.
-     *
+     * @param  array{image_path?:string, image_original?:string, image_large?:string, image_medium?:string, image_thumb?:string}  $paths
+     */
+    private function assertVariantsExist(array $paths): void
+    {
+        $disk = Storage::disk(self::DISK);
+
+        foreach (['image_original', 'image_large', 'image_medium', 'image_thumb'] as $key) {
+            $path = $paths[$key] ?? null;
+
+            if (! $path || ! $disk->exists($path)) {
+                throw new PortfolioImageProcessingException(
+                    'Variant file was not created: '.($path ?: $key),
+                );
+            }
+
+            if ($disk->size($path) < 1) {
+                throw new PortfolioImageProcessingException("Variant file is empty: {$path}");
+            }
+        }
+    }
+
+    private function deleteGeneratedVariants(string $folderRelative): void
+    {
+        $disk = Storage::disk(self::DISK);
+
+        foreach (self::VARIANT_NAMES as $name) {
+            foreach (['webp', 'jpg', 'jpeg', 'png'] as $ext) {
+                $path = $folderRelative.'/'.$name.'.'.$ext;
+
+                if ($disk->exists($path)) {
+                    $disk->delete($path);
+                }
+            }
+        }
+    }
+
+    private function cleanupRawSources(string $folderRelative): void
+    {
+        $disk = Storage::disk(self::DISK);
+
+        foreach ($disk->files($folderRelative) as $file) {
+            if ($this->isRawSourcePath($file)) {
+                $disk->delete($file);
+            }
+        }
+    }
+
+    private function isRawSourcePath(?string $path): bool
+    {
+        if (! $path) {
+            return false;
+        }
+
+        return (bool) preg_match('/\/(source|upload)\.[a-z0-9]+$/i', $path);
+    }
+
+    /**
      * @return array{image_path:string, image_original:string, image_large:string, image_medium:string, image_thumb:string}|null
      */
     private function attemptEmergencyVariants(string $sourcePath, string $dir, string $storedRelative): ?array
@@ -313,10 +465,19 @@ class PortfolioImageService
 
     private function manager(): ImageManager
     {
-        if ($this->manager === null) {
-            $this->manager = extension_loaded('imagick')
-                ? ImageManager::imagick()
-                : ImageManager::gd();
+        if ($this->manager !== null) {
+            return $this->manager;
+        }
+
+        // GD is more reliable on shared cPanel hosts; Imagick often lacks WEBP support.
+        if (extension_loaded('gd') && function_exists('imagecreatetruecolor')) {
+            $this->manager = ImageManager::gd();
+        } elseif (extension_loaded('imagick')) {
+            $this->manager = ImageManager::imagick();
+        } else {
+            throw new PortfolioImageProcessingException(
+                'No image processing driver available. Enable the PHP GD or Imagick extension.',
+            );
         }
 
         return $this->manager;
@@ -333,8 +494,14 @@ class PortfolioImageService
             return false;
         }
 
-        if (extension_loaded('imagick')) {
+        if (extension_loaded('gd') && function_exists('imagecreatetruecolor')) {
             return true;
+        }
+
+        if (extension_loaded('imagick')) {
+            $formats = \Imagick::queryFormats('WEBP');
+
+            return ! empty($formats);
         }
 
         return function_exists('imagecreatefromwebp');
@@ -342,11 +509,29 @@ class PortfolioImageService
 
     private function encodeToDisk(ImageInterface $image, string $absolutePath, string $format, int $quality): void
     {
-        $encoded = $format === 'webp'
-            ? $image->toWebp(quality: $quality)
-            : $image->toJpeg(quality: $quality);
+        try {
+            $encoded = $format === 'webp'
+                ? $image->toWebp(quality: $quality)
+                : $image->toJpeg(quality: $quality);
 
-        $encoded->save($absolutePath);
+            $encoded->save($absolutePath);
+        } catch (Throwable $e) {
+            if ($format === 'webp') {
+                throw new PortfolioImageProcessingException(
+                    'WebP encoding failed (check that PHP GD has WebP support): '.$e->getMessage(),
+                    $e,
+                );
+            }
+
+            throw new PortfolioImageProcessingException(
+                'Image encoding failed: '.$e->getMessage(),
+                $e,
+            );
+        }
+
+        if (! is_file($absolutePath) || filesize($absolutePath) < 1) {
+            throw new PortfolioImageProcessingException("Failed to write image file: {$absolutePath}");
+        }
     }
 
     private function detectMime(string $path): ?string

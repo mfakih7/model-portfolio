@@ -11,9 +11,10 @@ use Throwable;
 class RegeneratePortfolioVariants extends Command
 {
     protected $signature = 'portfolio:regenerate-variants
-        {--all : Regenerate variants for every image, even those that already have them}';
+        {--all : Regenerate variants for every image}
+        {--force : Overwrite existing variant files in each folder}';
 
-    protected $description = 'Generate WebP image variants (original/large/medium/thumb) for portfolio images';
+    protected $description = 'Generate WebP variants (original/large/medium/thumb) in each portfolio folder';
 
     public function handle(PortfolioImageService $service): int
     {
@@ -24,7 +25,10 @@ class RegeneratePortfolioVariants extends Command
                 $q->whereNull('image_medium')
                     ->orWhere('image_large', 'like', '%/upload.%')
                     ->orWhere('image_thumb', 'like', '%/upload.%')
-                    ->orWhere('image_medium', 'like', '%/upload.%');
+                    ->orWhere('image_medium', 'like', '%/upload.%')
+                    ->orWhere('image_large', 'like', '%/source.%')
+                    ->orWhere('image_thumb', 'like', '%/source.%')
+                    ->orWhere('image_medium', 'like', '%/source.%');
             });
         }
 
@@ -36,73 +40,108 @@ class RegeneratePortfolioVariants extends Command
             return self::SUCCESS;
         }
 
-        $this->info("Processing {$images->count()} image(s)...");
+        $force = (bool) $this->option('force');
+        $verbose = $this->output->isVerbose();
+
+        $this->info("Processing {$images->count()} image(s)...".($force ? ' (force overwrite)' : ''));
+
         $processed = 0;
+        $failed = 0;
         $skipped = 0;
 
         foreach ($images as $image) {
-            $source = $this->resolveSource($image);
+            $label = "#{$image->id} \"{$image->title}\"";
 
-            if (! $source) {
-                $this->warn("  - #{$image->id} \"{$image->title}\": no source file found, skipped.");
+            $folder = $service->folderForImage($image);
+
+            if (! $folder) {
+                $this->warn("  - {$label}: could not detect portfolio folder, skipped.");
                 $skipped++;
 
                 continue;
             }
 
+            if ($verbose) {
+                $this->line("  > {$label}: folder={$folder}");
+            }
+
+            $source = $service->findSourceInFolder($folder);
+
+            if (! $source) {
+                $this->warn("  - {$label}: no source/upload file found in {$folder}, skipped.");
+                $skipped++;
+
+                continue;
+            }
+
+            if ($verbose) {
+                $this->line("    source: {$source}");
+            }
+
+            if (! $force && $service->variantsExist([
+                'image_original' => "{$folder}/original.webp",
+                'image_large' => "{$folder}/large.webp",
+                'image_medium' => "{$folder}/medium.webp",
+                'image_thumb' => "{$folder}/thumb.webp",
+            ])) {
+                $paths = [
+                    'image_path' => "{$folder}/original.webp",
+                    'image_original' => "{$folder}/original.webp",
+                    'image_large' => "{$folder}/large.webp",
+                    'image_medium' => "{$folder}/medium.webp",
+                    'image_thumb' => "{$folder}/thumb.webp",
+                ];
+                $image->update($paths);
+                $this->line("  - {$label}: variants already exist, DB synced.");
+                $processed++;
+
+                continue;
+            }
+
             try {
-                $legacyPath = $image->image_path;
-                $legacyIsFlatFile = $legacyPath && dirname($legacyPath) === 'portfolio';
-                $oldDir = $this->variantDirectory($image);
+                $paths = $service->regenerateInFolder($folder, $source, $force);
+                $image->update($paths);
 
-                $variants = $service->generateFromPath($source);
-                $image->update($variants);
-
-                if ($oldDir && $oldDir !== dirname($variants['image_original'] ?? '')) {
-                    Storage::disk('public')->deleteDirectory($oldDir);
+                if (! $service->variantsExist($paths)) {
+                    throw new \RuntimeException('Variant files missing after generation.');
                 }
 
-                // Remove the old flat (pre-refactor) source file now that WebP
-                // variants exist in a dedicated folder.
-                if ($legacyIsFlatFile && Storage::disk('public')->exists($legacyPath)) {
-                    Storage::disk('public')->delete($legacyPath);
+                $this->info("  - {$label}: done → {$paths['image_thumb']}");
+
+                if ($verbose) {
+                    $disk = Storage::disk('public');
+                    foreach (['image_original', 'image_large', 'image_medium', 'image_thumb'] as $key) {
+                        $path = $paths[$key];
+                        $size = round($disk->size($path) / 1024, 1);
+                        $this->line("      {$key}: {$path} ({$size} KB)");
+                    }
                 }
 
-                $this->line("  - #{$image->id} \"{$image->title}\": done.");
                 $processed++;
             } catch (Throwable $e) {
-                $this->error("  - #{$image->id} \"{$image->title}\": {$e->getMessage()}");
-                $skipped++;
+                $failed++;
+                $this->error("  - {$label}: FAILED — {$e->getMessage()}");
+
+                if ($verbose) {
+                    $this->line($e->getTraceAsString());
+                }
             }
         }
+
+        $missingThumb = PortfolioImage::all()->filter(function (PortfolioImage $image) {
+            $path = $image->image_thumb;
+
+            return ! $path
+                || ! Storage::disk('public')->exists($path)
+                || preg_match('/\/(source|upload)\./', $path);
+        })->count();
 
         $this->newLine();
-        $this->info("Completed. Processed: {$processed}, skipped: {$skipped}.");
+        $this->info("Processed: {$processed}");
+        $this->info("Failed: {$failed}");
+        $this->info("Skipped: {$skipped}");
+        $this->info("Missing thumb (DB): {$missingThumb}");
 
-        return self::SUCCESS;
-    }
-
-    private function resolveSource(PortfolioImage $image): ?string
-    {
-        foreach ([$image->image_original, $image->image_path, $image->image_large, $image->image_medium] as $candidate) {
-            if ($candidate && Storage::disk('public')->exists($candidate)) {
-                return Storage::disk('public')->path($candidate);
-            }
-        }
-
-        return null;
-    }
-
-    private function variantDirectory(PortfolioImage $image): ?string
-    {
-        $reference = $image->image_original ?: $image->image_path ?: $image->image_large;
-
-        if (! $reference) {
-            return null;
-        }
-
-        $dir = dirname($reference);
-
-        return ($dir && $dir !== '.' && $dir !== 'portfolio') ? $dir : null;
+        return $failed > 0 ? self::FAILURE : self::SUCCESS;
     }
 }
