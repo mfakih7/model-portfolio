@@ -3,26 +3,31 @@
 @section('page_title', 'Portfolio Images')
 
 @section('page_actions')
-<a href="{{ route('admin.portfolio.create') }}" class="btn btn-primary btn-sm admin-btn-action"><i class="bi bi-plus-lg"></i> Add Image</a>
+<a href="{{ route('admin.portfolio.create') }}" class="btn btn-admin-primary admin-btn-action">
+    <i class="bi bi-plus-lg"></i> Add Image
+</a>
 @endsection
 
 @section('content')
-<div class="admin-card">
-    @if($images->count())
-    {{-- Reorder form holds only its CSRF + submit button. Order inputs live in
-         #orderInputs and are updated by Sortable on desktop table or mobile cards. --}}
-    <form action="{{ route('admin.portfolio.reorder') }}" method="POST" id="reorderForm">@csrf</form>
+@if($images->count())
+<form action="{{ route('admin.portfolio.reorder') }}" method="POST" id="reorderForm">@csrf</form>
 
-    <div id="orderInputs" class="visually-hidden" aria-hidden="true">
-        @foreach($images as $image)
-        <input type="hidden" name="order[]" value="{{ $image->id }}" form="reorderForm">
-        @endforeach
-    </div>
+<div id="orderInputs" class="visually-hidden" aria-hidden="true">
+    @foreach($images as $image)
+    <input type="hidden" name="order[]" value="{{ $image->id }}" form="reorderForm">
+    @endforeach
+</div>
 
-    <p class="text-muted small mb-3">Drag to reorder, then click Save Order.</p>
+@foreach($images as $image)
+<form id="delete-image-{{ $image->id }}" action="{{ route('admin.portfolio.destroy', $image) }}" method="POST" class="d-none">
+    @csrf @method('DELETE')
+</form>
+@endforeach
 
-    {{-- Desktop table --}}
-    <div class="table-responsive admin-table-desktop d-none d-lg-block">
+{{-- Desktop table (768px+) --}}
+<div class="admin-card d-none d-md-block">
+    <p class="text-muted small mb-3">Drag rows to reorder, then click Save Order.</p>
+    <div class="table-responsive admin-table-desktop">
         <table class="table table-hover align-middle mb-0" id="sortableTable">
             <thead>
                 <tr>
@@ -53,54 +58,66 @@
             </tbody>
         </table>
     </div>
+    <button type="submit" form="reorderForm" class="btn btn-secondary btn-sm mt-3">Save Order</button>
+</div>
 
-    {{-- Mobile cards --}}
-    <div class="admin-mobile-list d-lg-none" id="sortableCards">
+{{-- Mobile cards (<768px) --}}
+<div class="d-md-none admin-mobile-section">
+    <p class="admin-list-hint">Drag to reorder, then save.</p>
+    <div class="admin-mobile-list" id="sortableCards">
         @foreach($images as $image)
-        <article class="admin-mobile-card portfolio-mobile-card" data-id="{{ $image->id }}">
-            <div class="admin-mobile-card-top">
-                <button type="button" class="admin-card-handle handle" aria-label="Drag to reorder">
-                    <i class="bi bi-grip-vertical"></i>
-                </button>
-                <img src="{{ $image->thumb_url }}" class="portfolio-mobile-thumb" alt="{{ $image->title }}" loading="lazy">
-                <div class="admin-mobile-card-info">
-                    <h6 class="admin-mobile-card-title mb-1">{{ $image->title }}</h6>
-                    <span class="badge bg-secondary">{{ $image->category->name }}</span>
+        <article class="portfolio-mobile-card" data-id="{{ $image->id }}">
+            <button type="button" class="portfolio-card-handle handle" aria-label="Drag to reorder">
+                <i class="bi bi-grip-horizontal"></i>
+            </button>
+
+            <div class="portfolio-card-main">
+                <div class="portfolio-card-thumb">
+                    <div class="portfolio-card-thumb-placeholder" aria-hidden="true">
+                        <i class="bi bi-image"></i>
+                    </div>
+                    @if($image->thumb_url)
+                    <img src="{{ $image->thumb_url }}"
+                         class="portfolio-card-thumb-img"
+                         alt="{{ $image->title }}"
+                         loading="lazy"
+                         width="80"
+                         height="80"
+                         onerror="this.remove();">
+                    @endif
+                </div>
+
+                <div class="portfolio-card-content">
+                    <h6 class="portfolio-card-title">{{ $image->title }}</h6>
+                    <div class="portfolio-card-badges">
+                        <span class="admin-pill admin-pill-category">{{ $image->category->name }}</span>
+                        @if($image->is_featured)
+                        <span class="admin-pill admin-pill-featured"><i class="bi bi-star-fill"></i> Featured</span>
+                        @endif
+                    </div>
+                    <span class="portfolio-card-order">Order {{ $image->sort_order }}</span>
                 </div>
             </div>
-            <div class="admin-mobile-card-meta">
-                <span class="admin-mobile-meta-item">
-                    <span class="text-muted">Order</span>
-                    <strong>{{ $image->sort_order }}</strong>
-                </span>
-                <span class="admin-mobile-meta-item">
-                    <span class="text-muted">Featured</span>
-                    @if($image->is_featured)
-                        <i class="bi bi-star-fill text-warning"></i>
-                    @else
-                        <span class="text-muted">—</span>
-                    @endif
-                </span>
-            </div>
-            <div class="admin-mobile-card-actions">
-                <a href="{{ route('admin.portfolio.edit', $image) }}" class="btn btn-outline-primary">Edit</a>
-                <button type="submit" form="delete-image-{{ $image->id }}" class="btn btn-outline-danger" onclick="return confirm('Delete this image?')">Delete</button>
+
+            <div class="portfolio-card-actions">
+                <a href="{{ route('admin.portfolio.edit', $image) }}" class="btn btn-admin-sm btn-admin-edit">Edit</a>
+                <button type="submit" form="delete-image-{{ $image->id }}" class="btn btn-admin-sm btn-admin-delete" onclick="return confirm('Delete this image?')">Delete</button>
             </div>
         </article>
         @endforeach
     </div>
 
-    <button type="submit" form="reorderForm" class="btn btn-secondary btn-sm mt-3 admin-btn-save-order">Save Order</button>
-
-    @foreach($images as $image)
-    <form id="delete-image-{{ $image->id }}" action="{{ route('admin.portfolio.destroy', $image) }}" method="POST" class="d-none">
-        @csrf @method('DELETE')
-    </form>
-    @endforeach
-    @else
-    <p class="text-muted mb-0">No portfolio images yet. <a href="{{ route('admin.portfolio.create') }}">Upload your first image</a>.</p>
-    @endif
+    <div class="admin-sticky-bar">
+        <button type="submit" form="reorderForm" class="btn btn-admin-save w-100">
+            <i class="bi bi-check2-circle me-1"></i> Save Order
+        </button>
+    </div>
 </div>
+@else
+<div class="admin-card">
+    <p class="text-muted mb-0">No portfolio images yet. <a href="{{ route('admin.portfolio.create') }}">Upload your first image</a>.</p>
+</div>
+@endif
 @endsection
 
 @push('scripts')
@@ -133,6 +150,8 @@
         new Sortable(cards, {
             handle: '.handle',
             animation: 150,
+            ghostClass: 'portfolio-card-ghost',
+            chosenClass: 'portfolio-card-chosen',
             onEnd: () => syncOrder(cards, '.portfolio-mobile-card'),
         });
     }

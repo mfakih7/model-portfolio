@@ -3,13 +3,40 @@
 @section('page_title', 'Categories')
 
 @section('page_actions')
-<a href="{{ route('admin.categories.create') }}" class="btn btn-primary btn-sm admin-btn-action"><i class="bi bi-plus-lg"></i> Add Category</a>
+<a href="{{ route('admin.categories.create') }}" class="btn btn-admin-primary admin-btn-action">
+    <i class="bi bi-plus-lg"></i> Add Category
+</a>
 @endsection
 
 @section('content')
-<div class="admin-card">
-    {{-- Desktop table --}}
-    <div class="table-responsive admin-table-desktop d-none d-lg-block">
+<div class="admin-card admin-card-flush d-md-none">
+    <div class="admin-mobile-list">
+        @foreach($categories as $category)
+        <article class="admin-list-card">
+            <div class="admin-list-card-body">
+                <h6 class="admin-list-card-title">{{ $category->name }}</h6>
+                <code class="admin-list-card-sub">{{ $category->slug }}</code>
+                <div class="admin-list-card-meta">
+                    <span class="admin-pill admin-pill-muted">{{ $category->images_count }} images</span>
+                    <span class="admin-pill {{ $category->status ? 'admin-pill-success' : 'admin-pill-muted' }}">
+                        {{ $category->status ? 'Active' : 'Inactive' }}
+                    </span>
+                </div>
+            </div>
+            <div class="admin-list-card-actions">
+                <a href="{{ route('admin.categories.edit', $category) }}" class="btn btn-admin-sm btn-admin-edit">Edit</a>
+                <form action="{{ route('admin.categories.destroy', $category) }}" method="POST" onsubmit="return confirm('Delete category?')">
+                    @csrf @method('DELETE')
+                    <button type="submit" class="btn btn-admin-sm btn-admin-delete">Delete</button>
+                </form>
+            </div>
+        </article>
+        @endforeach
+    </div>
+</div>
+
+<div class="admin-card d-none d-md-block">
+    <div class="table-responsive admin-table-desktop">
         <table class="table table-hover align-middle mb-0">
             <thead>
                 <tr><th>Name</th><th>Slug</th><th>Images</th><th>Status</th><th></th></tr>
@@ -32,35 +59,6 @@
                 @endforeach
             </tbody>
         </table>
-    </div>
-
-    {{-- Mobile cards --}}
-    <div class="admin-mobile-list d-lg-none">
-        @foreach($categories as $category)
-        <article class="admin-mobile-card">
-            <div class="admin-mobile-card-info mb-2">
-                <h6 class="admin-mobile-card-title mb-1">{{ $category->name }}</h6>
-                <code class="small">{{ $category->slug }}</code>
-            </div>
-            <div class="admin-mobile-card-meta">
-                <span class="admin-mobile-meta-item">
-                    <span class="text-muted">Images</span>
-                    <strong>{{ $category->images_count }}</strong>
-                </span>
-                <span class="admin-mobile-meta-item">
-                    <span class="text-muted">Status</span>
-                    <span class="badge {{ $category->status ? 'bg-success' : 'bg-secondary' }}">{{ $category->status ? 'Active' : 'Inactive' }}</span>
-                </span>
-            </div>
-            <div class="admin-mobile-card-actions">
-                <a href="{{ route('admin.categories.edit', $category) }}" class="btn btn-outline-primary">Edit</a>
-                <form action="{{ route('admin.categories.destroy', $category) }}" method="POST" onsubmit="return confirm('Delete category?')">
-                    @csrf @method('DELETE')
-                    <button type="submit" class="btn btn-outline-danger">Delete</button>
-                </form>
-            </div>
-        </article>
-        @endforeach
     </div>
 </div>
 @endsection

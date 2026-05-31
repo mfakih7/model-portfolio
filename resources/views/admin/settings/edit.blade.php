@@ -57,7 +57,7 @@
         </div>
 
         <div class="admin-form-actions">
-        <button type="submit" class="btn btn-primary btn-lg admin-btn-submit">Save Settings</button>
+        <button type="submit" class="btn btn-admin-primary admin-btn-submit">Save Settings</button>
         </div>
     </form>
 </div>

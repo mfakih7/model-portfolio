@@ -31,7 +31,7 @@
             </div>
         </div>
         <div class="admin-form-actions">
-        <button type="submit" class="btn btn-primary btn-lg admin-btn-submit">Save About Content</button>
+        <button type="submit" class="btn btn-admin-primary admin-btn-submit">Save About Content</button>
         </div>
     </form>
 </div>

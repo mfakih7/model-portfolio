@@ -12,7 +12,7 @@
         </div>
         @include('admin.portfolio._form', ['image' => $image])
         <div class="admin-form-actions">
-            <button type="submit" class="btn btn-primary btn-lg admin-btn-submit">Update Image</button>
+            <button type="submit" class="btn btn-admin-primary admin-btn-submit">Update Image</button>
             <a href="{{ route('admin.portfolio.index') }}" class="btn btn-link">Cancel</a>
         </div>
     </form>
