@@ -4,7 +4,7 @@
     <label class="form-label">Image {{ $image ? '(leave empty to keep current)' : '*' }}</label>
     <input type="file" name="image" class="form-control @error('image') is-invalid @enderror" {{ $image ? '' : 'required' }} accept=".jpg,.jpeg,.png,.webp">
     @error('image')<div class="invalid-feedback">{{ $message }}</div>@enderror
-    <small class="text-muted">JPG, PNG, WEBP — max 5MB</small>
+    <small class="text-muted">JPG, JPEG, PNG or WEBP — max 25 MB, up to 6000×6000 pixels. Photos are automatically optimized for the web.</small>
 </div>
 
 <div class="mb-3">
@@ -41,3 +41,21 @@
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script>
+(function () {
+    const input = document.querySelector('input[type="file"][name="image"]');
+    const form = input ? input.closest('form') : null;
+    if (!form) return;
+
+    form.addEventListener('submit', function () {
+        const btn = form.querySelector('button[type="submit"]');
+        if (!btn || btn.dataset.loading === '1') return;
+        btn.dataset.loading = '1';
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Uploading and optimizing...';
+    });
+})();
+</script>
+@endpush

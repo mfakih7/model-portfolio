@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exceptions\PortfolioImageProcessingException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\PortfolioImageRequest;
 use App\Models\PortfolioCategory;
@@ -9,7 +10,10 @@ use App\Models\PortfolioImage;
 use App\Services\PortfolioImageService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
+use Throwable;
 
 class PortfolioImageController extends Controller
 {
@@ -31,7 +35,18 @@ class PortfolioImageController extends Controller
 
     public function store(PortfolioImageRequest $request): RedirectResponse
     {
-        $variants = $this->images->generate($request->file('image'));
+        try {
+            $variants = $this->images->generate($request->file('image'));
+        } catch (PortfolioImageProcessingException $e) {
+            return back()->withInput()->with('error', $e->getMessage());
+        } catch (Throwable $e) {
+            $this->logUploadFailure($request->file('image'), $e);
+
+            return back()->withInput()->with(
+                'error',
+                'The server could not process this image. Please try again or upload a JPG instead of PNG.',
+            );
+        }
 
         PortfolioImage::create([
             'portfolio_category_id' => $request->portfolio_category_id,
@@ -63,8 +78,21 @@ class PortfolioImageController extends Controller
         ];
 
         if ($request->hasFile('image')) {
+            try {
+                $variants = $this->images->generate($request->file('image'));
+            } catch (PortfolioImageProcessingException $e) {
+                return back()->withInput()->with('error', $e->getMessage());
+            } catch (Throwable $e) {
+                $this->logUploadFailure($request->file('image'), $e, $portfolio->id);
+
+                return back()->withInput()->with(
+                    'error',
+                    'The server could not process this image. Please try again or upload a JPG instead of PNG.',
+                );
+            }
+
             $this->images->deleteVariants($portfolio);
-            $data = [...$data, ...$this->images->generate($request->file('image'))];
+            $data = [...$data, ...$variants];
         }
 
         $portfolio->update($data);
@@ -77,7 +105,7 @@ class PortfolioImageController extends Controller
         $this->images->deleteVariants($portfolio);
         $portfolio->delete();
 
-        return redirect()->route('admin.portfolio.index')->with('success', 'Portfolio image deleted.');
+        return redirect()->route('admin.portfolio.index')->with('success', 'Portfolio image deleted successfully.');
     }
 
     public function reorder(Request $request): RedirectResponse
@@ -89,5 +117,20 @@ class PortfolioImageController extends Controller
         }
 
         return back()->with('success', 'Image order updated.');
+    }
+
+    private function logUploadFailure(UploadedFile $file, Throwable $e, ?int $imageId = null): void
+    {
+        $path = $file->getRealPath();
+        $dimensions = $path ? @getimagesize($path) : false;
+
+        Log::error('Portfolio image processing failed', [
+            'image_id' => $imageId,
+            'size' => $file->getSize(),
+            'mime' => $file->getMimeType(),
+            'dimensions' => $dimensions ?: null,
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ]);
     }
 }

@@ -2,90 +2,95 @@
 
 namespace App\Services;
 
+use App\Exceptions\PortfolioImageProcessingException;
 use App\Models\PortfolioImage;
-use GdImage;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use RuntimeException;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Interfaces\ImageInterface;
+use Intervention\Image\Drivers\Gd\Driver as GdDriver;
+use Intervention\Image\Drivers\Imagick\Driver as ImagickDriver;
+use Throwable;
 
 /**
- * Generates a set of optimized WebP variants for portfolio images.
+ * Generates optimized portfolio image variants using Intervention Image.
  *
- * Each source image produces four files inside a dedicated UUID folder:
- *   portfolio/{uuid}/original.webp  full resolution (download / full preview only)
- *   portfolio/{uuid}/large.webp     max width 1200px (lightbox / detail)
- *   portfolio/{uuid}/medium.webp    max width 600px  (grids)
- *   portfolio/{uuid}/thumb.webp     250x250 cover crop (admin listing)
+ * Flow:
+ *  1. Store the raw upload to disk (no decode).
+ *  2. Read once, orient, flatten PNG transparency, scale down to a working size.
+ *  3. Save an optimized "original" and generate large / medium / thumb from it.
+ *  4. If variant generation fails, fall back to the stored upload for all paths.
  */
 class PortfolioImageService
 {
+    public const MAX_DIMENSION = 6000;
+
     private const DISK = 'public';
 
     private const BASE_DIR = 'portfolio';
 
+    /** Longest side for the stored "original" variant (never the raw multi‑MB upload). */
+    private int $originalMaxDimension = 2400;
+
+    private int $originalQuality = 88;
+
     /**
-     * Resize variants. "crop" performs a centered cover crop to exact dimensions,
-     * otherwise the image is scaled to the target width preserving aspect ratio.
-     *
      * @var array<string, array{width:int, height:?int, crop:bool, quality:int}>
      */
     private array $variants = [
-        'large' => ['width' => 1200, 'height' => null, 'crop' => false, 'quality' => 82],
-        'medium' => ['width' => 600, 'height' => null, 'crop' => false, 'quality' => 80],
-        'thumb' => ['width' => 250, 'height' => 250, 'crop' => true, 'quality' => 78],
+        'large' => ['width' => 1600, 'height' => null, 'crop' => false, 'quality' => 82],
+        'medium' => ['width' => 900, 'height' => null, 'crop' => false, 'quality' => 80],
+        'thumb' => ['width' => 400, 'height' => 400, 'crop' => true, 'quality' => 78],
     ];
 
-    private int $originalQuality = 90;
+    private ?ImageManager $manager = null;
 
     /**
-     * Generate every variant from an uploaded file.
-     *
      * @return array{image_path:string, image_original:string, image_large:string, image_medium:string, image_thumb:string}
      */
     public function generate(UploadedFile $file): array
     {
-        return $this->generateFromPath($file->getRealPath());
-    }
-
-    /**
-     * Generate every variant from an absolute source image path.
-     *
-     * @return array{image_path:string, image_original:string, image_large:string, image_medium:string, image_thumb:string}
-     */
-    public function generateFromPath(string $sourcePath): array
-    {
-        $source = $this->createImageResource($sourcePath);
+        $this->prepareRuntime();
 
         $dir = self::BASE_DIR.'/'.Str::uuid()->toString();
         Storage::disk(self::DISK)->makeDirectory($dir);
 
-        $paths = [];
+        $storedRelative = $this->storeUpload($file, $dir);
 
-        try {
-            $originalRel = $dir.'/original.webp';
-            $this->writeWebp($source, $originalRel, $this->originalQuality);
-            $paths['image_original'] = $originalRel;
+        return $this->processStoredFile(
+            Storage::disk(self::DISK)->path($storedRelative),
+            $storedRelative,
+            $dir,
+            $file,
+        );
+    }
 
-            foreach ($this->variants as $name => $cfg) {
-                $variant = $cfg['crop']
-                    ? $this->cropCover($source, $cfg['width'], $cfg['height'])
-                    : $this->scaleToWidth($source, $cfg['width']);
+    /**
+     * @return array{image_path:string, image_original:string, image_large:string, image_medium:string, image_thumb:string}
+     */
+    public function generateFromPath(string $sourcePath): array
+    {
+        $this->prepareRuntime();
 
-                $rel = $dir.'/'.$name.'.webp';
-                $this->writeWebp($variant, $rel, $cfg['quality']);
-                imagedestroy($variant);
-
-                $paths['image_'.$name] = $rel;
-            }
-        } finally {
-            imagedestroy($source);
+        if (! is_file($sourcePath)) {
+            throw new PortfolioImageProcessingException('Source image file was not found.');
         }
 
-        // Keep the legacy column populated for backward compatibility.
-        $paths['image_path'] = $paths['image_original'];
+        $dir = self::BASE_DIR.'/'.Str::uuid()->toString();
+        Storage::disk(self::DISK)->makeDirectory($dir);
 
-        return $paths;
+        $ext = strtolower(pathinfo($sourcePath, PATHINFO_EXTENSION) ?: 'jpg');
+        $storedRelative = $dir.'/source.'.$ext;
+        Storage::disk(self::DISK)->put($storedRelative, file_get_contents($sourcePath));
+
+        return $this->processStoredFile(
+            Storage::disk(self::DISK)->path($storedRelative),
+            $storedRelative,
+            $dir,
+            null,
+        );
     }
 
     /**
@@ -105,134 +110,212 @@ class PortfolioImageService
 
         $dir = dirname($reference);
 
-        // Only delete dedicated per-image folders (portfolio/{uuid}), never the
-        // shared portfolio root that legacy flat files used to live in.
         if ($dir && $dir !== '.' && $dir !== self::BASE_DIR && Storage::disk(self::DISK)->exists($dir)) {
             Storage::disk(self::DISK)->deleteDirectory($dir);
 
             return;
         }
 
-        // Legacy flat file fallback.
-        if ($image->image_path && Storage::disk(self::DISK)->exists($image->image_path)) {
-            Storage::disk(self::DISK)->delete($image->image_path);
+        foreach (['image_original', 'image_large', 'image_medium', 'image_thumb', 'image_path'] as $column) {
+            $path = $image->getAttribute($column);
+            if ($path && Storage::disk(self::DISK)->exists($path)) {
+                Storage::disk(self::DISK)->delete($path);
+            }
         }
-    }
-
-    private function writeWebp(GdImage $image, string $relativePath, int $quality): void
-    {
-        $absolute = Storage::disk(self::DISK)->path($relativePath);
-
-        if (! imagewebp($image, $absolute, $quality)) {
-            throw new RuntimeException("Failed to write WebP variant: {$relativePath}");
-        }
-    }
-
-    private function createImageResource(string $path): GdImage
-    {
-        if (! is_file($path)) {
-            throw new RuntimeException("Source image not found: {$path}");
-        }
-
-        $info = @getimagesize($path);
-        $mime = $info['mime'] ?? null;
-
-        $image = match ($mime) {
-            'image/jpeg' => imagecreatefromjpeg($path),
-            'image/png' => imagecreatefrompng($path),
-            'image/webp' => imagecreatefromwebp($path),
-            'image/gif' => imagecreatefromgif($path),
-            default => throw new RuntimeException('Unsupported image type: '.($mime ?: 'unknown')),
-        };
-
-        if (! $image instanceof GdImage) {
-            throw new RuntimeException("Failed to decode image: {$path}");
-        }
-
-        if ($mime === 'image/jpeg') {
-            $image = $this->fixJpegOrientation($image, $path);
-        }
-
-        return $image;
     }
 
     /**
-     * Correct rotation based on EXIF orientation so phone photos aren't sideways.
+     * @return array{image_path:string, image_original:string, image_large:string, image_medium:string, image_thumb:string}
      */
-    private function fixJpegOrientation(GdImage $image, string $path): GdImage
+    private function processStoredFile(
+        string $absolutePath,
+        string $storedRelative,
+        string $dir,
+        ?UploadedFile $file,
+    ): array {
+        try {
+            $paths = $this->buildOptimizedVariants($absolutePath, $dir);
+            $this->removeRawUploadIfReplaced($storedRelative, $paths['image_original']);
+
+            return $paths;
+        } catch (PortfolioImageProcessingException $e) {
+            Log::error('Portfolio image processing failed', $this->logContext($file, $absolutePath, $e));
+
+            throw $e;
+        } catch (Throwable $e) {
+            Log::error('Portfolio image processing failed', $this->logContext($file, $absolutePath, $e));
+
+            return $this->fallbackPaths($storedRelative);
+        }
+    }
+
+    /**
+     * @return array{image_path:string, image_original:string, image_large:string, image_medium:string, image_thumb:string}
+     */
+    private function buildOptimizedVariants(string $sourcePath, string $dir): array
     {
-        if (! function_exists('exif_read_data')) {
-            return $image;
+        $mime = $this->detectMime($sourcePath);
+
+        if (! $this->isSupportedMime($mime)) {
+            throw new PortfolioImageProcessingException(
+                'Unsupported image format. Please upload a JPG, JPEG, PNG, or WEBP file.',
+            );
         }
 
-        $exif = @exif_read_data($path);
-        $orientation = $exif['Orientation'] ?? null;
+        $format = $this->outputFormat();
 
-        $rotated = match ($orientation) {
-            3 => imagerotate($image, 180, 0),
-            6 => imagerotate($image, -90, 0),
-            8 => imagerotate($image, 90, 0),
-            default => null,
-        };
+        // --- Pass 1: decode once, normalize, downscale to working size, save original ---
+        $image = $this->manager()->read($sourcePath);
+        $image->orient();
 
-        if ($rotated instanceof GdImage) {
-            imagedestroy($image);
-
-            return $rotated;
+        if ($this->shouldFlattenTransparency($mime)) {
+            $image->blendTransparency('ffffff');
         }
 
-        return $image;
-    }
+        $image->scaleDown($this->originalMaxDimension, $this->originalMaxDimension);
 
-    private function scaleToWidth(GdImage $src, int $maxWidth): GdImage
-    {
-        $width = imagesx($src);
-        $height = imagesy($src);
+        $originalRelative = $dir.'/original.'.$format;
+        $this->encodeToDisk($image, Storage::disk(self::DISK)->path($originalRelative), $format, $this->originalQuality);
 
-        // Never upscale: smaller sources are re-encoded at their native size.
-        if ($width <= $maxWidth) {
-            return $this->copyResampled($src, 0, 0, $width, $height, $width, $height);
+        unset($image);
+
+        // --- Pass 2: generate every variant from the smaller saved original ---
+        $originalAbsolute = Storage::disk(self::DISK)->path($originalRelative);
+        $paths = ['image_original' => $originalRelative];
+
+        foreach ($this->variants as $name => $cfg) {
+            $variant = $this->manager()->read($originalAbsolute);
+
+            if ($cfg['crop']) {
+                $variant->coverDown($cfg['width'], $cfg['height']);
+            } else {
+                $variant->scaleDown($cfg['width'], $cfg['height']);
+            }
+
+            $relative = $dir.'/'.$name.'.'.$format;
+            $this->encodeToDisk($variant, Storage::disk(self::DISK)->path($relative), $format, $cfg['quality']);
+            $paths['image_'.$name] = $relative;
+
+            unset($variant);
         }
 
-        $targetWidth = $maxWidth;
-        $targetHeight = (int) max(1, round($height * ($maxWidth / $width)));
+        $paths['image_path'] = $paths['image_original'];
 
-        return $this->copyResampled($src, 0, 0, $width, $height, $targetWidth, $targetHeight);
+        return $paths;
     }
 
-    private function cropCover(GdImage $src, int $targetWidth, int $targetHeight): GdImage
+    /**
+     * @return array{image_path:string, image_original:string, image_large:string, image_medium:string, image_thumb:string}
+     */
+    private function fallbackPaths(string $storedRelative): array
     {
-        $width = imagesx($src);
-        $height = imagesy($src);
-
-        $ratio = max($targetWidth / $width, $targetHeight / $height);
-        $cropWidth = (int) round($targetWidth / $ratio);
-        $cropHeight = (int) round($targetHeight / $ratio);
-        $srcX = (int) max(0, round(($width - $cropWidth) / 2));
-        $srcY = (int) max(0, round(($height - $cropHeight) / 2));
-
-        $dst = $this->createCanvas($targetWidth, $targetHeight);
-        imagecopyresampled($dst, $src, 0, 0, $srcX, $srcY, $targetWidth, $targetHeight, $cropWidth, $cropHeight);
-
-        return $dst;
+        return [
+            'image_path' => $storedRelative,
+            'image_original' => $storedRelative,
+            'image_large' => $storedRelative,
+            'image_medium' => $storedRelative,
+            'image_thumb' => $storedRelative,
+        ];
     }
 
-    private function copyResampled(GdImage $src, int $srcX, int $srcY, int $srcW, int $srcH, int $dstW, int $dstH): GdImage
+    private function storeUpload(UploadedFile $file, string $dir): string
     {
-        $dst = $this->createCanvas($dstW, $dstH);
-        imagecopyresampled($dst, $src, 0, 0, $srcX, $srcY, $dstW, $dstH, $srcW, $srcH);
+        $ext = strtolower($file->getClientOriginalExtension() ?: $file->guessExtension() ?: 'bin');
+        $relative = $file->storeAs($dir, 'upload.'.$ext, self::DISK);
 
-        return $dst;
+        if (! $relative || ! Storage::disk(self::DISK)->exists($relative)) {
+            throw new PortfolioImageProcessingException(
+                'The server could not save the uploaded image. Please check storage folder permissions.',
+            );
+        }
+
+        return $relative;
     }
 
-    private function createCanvas(int $width, int $height): GdImage
+    private function removeRawUploadIfReplaced(string $storedRelative, string $optimizedRelative): void
     {
-        $canvas = imagecreatetruecolor($width, $height);
-        imagealphablending($canvas, false);
-        imagesavealpha($canvas, true);
-        $transparent = imagecolorallocatealpha($canvas, 0, 0, 0, 127);
-        imagefilledrectangle($canvas, 0, 0, $width, $height, $transparent);
+        if ($storedRelative !== $optimizedRelative && Storage::disk(self::DISK)->exists($storedRelative)) {
+            Storage::disk(self::DISK)->delete($storedRelative);
+        }
+    }
 
-        return $canvas;
+    private function prepareRuntime(): void
+    {
+        @ini_set('memory_limit', '512M');
+
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(120);
+        }
+    }
+
+    private function manager(): ImageManager
+    {
+        if ($this->manager === null) {
+            $this->manager = extension_loaded('imagick')
+                ? ImageManager::imagick()
+                : ImageManager::gd();
+        }
+
+        return $this->manager;
+    }
+
+    private function outputFormat(): string
+    {
+        return $this->supportsWebp() ? 'webp' : 'jpg';
+    }
+
+    private function supportsWebp(): bool
+    {
+        if (! function_exists('imagewebp')) {
+            return false;
+        }
+
+        if (extension_loaded('imagick')) {
+            return true;
+        }
+
+        return function_exists('imagecreatefromwebp');
+    }
+
+    private function encodeToDisk(ImageInterface $image, string $absolutePath, string $format, int $quality): void
+    {
+        $encoded = $format === 'webp'
+            ? $image->toWebp(quality: $quality)
+            : $image->toJpeg(quality: $quality);
+
+        $encoded->save($absolutePath);
+    }
+
+    private function detectMime(string $path): ?string
+    {
+        $info = @getimagesize($path);
+
+        return $info['mime'] ?? null;
+    }
+
+    private function isSupportedMime(?string $mime): bool
+    {
+        return in_array($mime, ['image/jpeg', 'image/png', 'image/webp', 'image/gif'], true);
+    }
+
+    private function shouldFlattenTransparency(?string $mime): bool
+    {
+        return in_array($mime, ['image/png', 'image/webp'], true);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function logContext(?UploadedFile $file, string $path, Throwable $e): array
+    {
+        $dimensions = @getimagesize($path);
+
+        return [
+            'size' => $file?->getSize() ?? (is_file($path) ? filesize($path) : null),
+            'mime' => $file?->getMimeType() ?? $this->detectMime($path),
+            'dimensions' => $dimensions ?: null,
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ];
     }
 }
