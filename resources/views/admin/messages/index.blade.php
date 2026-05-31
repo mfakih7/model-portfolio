@@ -18,8 +18,8 @@
                     </span>
                 </div>
             </div>
-            <div class="admin-list-card-actions">
-                <a href="{{ route('admin.messages.show', $message) }}" class="btn btn-admin-sm btn-admin-edit w-100">View</a>
+            <div class="admin-list-card-actions admin-list-card-actions-single">
+                <a href="{{ route('admin.messages.show', $message) }}" class="btn btn-admin-sm btn-admin-edit">View</a>
             </div>
         </article>
         @endforeach

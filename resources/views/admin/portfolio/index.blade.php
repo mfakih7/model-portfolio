@@ -67,11 +67,11 @@
     <div class="admin-mobile-list" id="sortableCards">
         @foreach($images as $image)
         <article class="portfolio-mobile-card" data-id="{{ $image->id }}">
-            <button type="button" class="portfolio-card-handle handle" aria-label="Drag to reorder">
-                <i class="bi bi-grip-horizontal"></i>
-            </button>
+            <div class="portfolio-card-inner">
+                <button type="button" class="portfolio-card-handle handle" aria-label="Drag to reorder">
+                    <i class="bi bi-grip-vertical"></i>
+                </button>
 
-            <div class="portfolio-card-main">
                 <div class="portfolio-card-thumb">
                     <div class="portfolio-card-thumb-placeholder" aria-hidden="true">
                         <i class="bi bi-image"></i>
@@ -81,13 +81,14 @@
                          class="portfolio-card-thumb-img"
                          alt="{{ $image->title }}"
                          loading="lazy"
+                         decoding="async"
                          width="80"
                          height="80"
                          onerror="this.remove();">
                     @endif
                 </div>
 
-                <div class="portfolio-card-content">
+                <div class="portfolio-card-body">
                     <h6 class="portfolio-card-title">{{ $image->title }}</h6>
                     <div class="portfolio-card-badges">
                         <span class="admin-pill admin-pill-category">{{ $image->category->name }}</span>
@@ -152,6 +153,8 @@
             animation: 150,
             ghostClass: 'portfolio-card-ghost',
             chosenClass: 'portfolio-card-chosen',
+            delay: 150,
+            delayOnTouchOnly: true,
             onEnd: () => syncOrder(cards, '.portfolio-mobile-card'),
         });
     }

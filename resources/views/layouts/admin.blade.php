@@ -58,7 +58,9 @@
 
         <div class="admin-page-header d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
             <h1 class="h3 mb-0 admin-page-title">@yield('page_title', 'Dashboard')</h1>
+            @hasSection('page_actions')
             <div class="admin-page-actions">@yield('page_actions')</div>
+            @endif
         </div>
 
         @yield('content')
