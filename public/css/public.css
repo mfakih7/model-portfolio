@@ -450,6 +450,52 @@ h1, h2, h3, h4, h5, h6, .display-font {
     color: var(--color-gold);
 }
 
+.footer-bottom {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.footer-developer-credit {
+    font-size: 0.65rem;
+    letter-spacing: 0.06em;
+    color: rgba(176, 176, 176, 0.55);
+    line-height: 1.5;
+}
+
+.footer-developer-link {
+    color: var(--color-gold);
+    opacity: 0.8;
+    text-decoration: none;
+    position: relative;
+    transition: color 0.3s ease, opacity 0.3s ease;
+}
+
+.footer-developer-link::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: -1px;
+    width: 100%;
+    height: 1px;
+    background: var(--color-gold);
+    transform: scaleX(0);
+    transform-origin: right;
+    transition: transform 0.35s ease;
+    opacity: 0.6;
+}
+
+.footer-developer-link:hover {
+    color: var(--color-gold-light);
+    opacity: 1;
+}
+
+.footer-developer-link:hover::after {
+    transform: scaleX(1);
+    transform-origin: left;
+}
+
 .social-icon {
     width: 42px;
     height: 42px;

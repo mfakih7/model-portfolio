@@ -26,8 +26,14 @@
             </div>
         </div>
         <hr class="my-4 border-secondary opacity-25">
-        <p class="text-center text-muted small mb-0">
-            &copy; {{ date('Y') }} {{ $settings->model_name }}. All rights reserved.
-        </p>
+        <div class="footer-bottom text-center">
+            <p class="footer-copyright text-muted small mb-0">
+                &copy; {{ date('Y') }} {{ $settings->model_name }}. All rights reserved.
+            </p>
+            <p class="footer-developer-credit mb-0">
+                Website designed &amp; developed by
+                <a href="mailto:mhfakih7@gmail.com" class="footer-developer-link">Mhamad Fakih</a>
+            </p>
+        </div>
     </div>
 </footer>
