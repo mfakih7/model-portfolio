@@ -19,24 +19,22 @@
         </nav>
 
         @if($images->count())
-        <div class="portfolio-grid fade-up">
-            @foreach($images as $image)
-            <div class="portfolio-item" data-lightbox
-                 data-src="{{ $image->large_url }}"
-                 data-download="{{ $image->large_url }}"
-                 data-title="{{ $image->title }}"
-                 data-description="{{ $image->description }}"
-                 data-category="{{ $image->category->name }}">
-                <div class="skeleton"></div>
-                <img src="{{ $image->thumb_url }}" alt="{{ $image->title }}" loading="lazy" decoding="async">
-                <span class="zoom-hint" aria-hidden="true"><i class="bi bi-zoom-in"></i></span>
-                <div class="overlay">
-                    <span class="text-gold small text-uppercase">{{ $image->category->name }}</span>
-                    <h5 class="display-font mb-0">{{ $image->title }}</h5>
-                </div>
-            </div>
-            @endforeach
+        <div class="portfolio-grid fade-up" id="portfolioGrid">
+            @include('partials.portfolio-grid-items', ['images' => $images, 'offset' => 0])
         </div>
+
+        @if($hasMore)
+        <div class="text-center mt-5 fade-up">
+            <button type="button"
+                    class="btn btn-luxury"
+                    id="portfolioLoadMore"
+                    data-offset="{{ $images->count() }}"
+                    data-category="{{ $category ?? '' }}"
+                    data-total="{{ $total }}">
+                Load More
+            </button>
+        </div>
+        @endif
         @else
         <div class="text-center py-5">
             <p class="text-muted">No portfolio images yet. Check back soon.</p>

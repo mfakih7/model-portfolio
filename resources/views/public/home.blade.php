@@ -2,6 +2,12 @@
 
 @section('title', $settings->meta_title ?? $settings->model_name . ' | Fashion Model')
 
+@if($settings->hero_image_url)
+@push('head')
+<link rel="preload" as="image" href="{{ $settings->hero_image_url }}" fetchpriority="high">
+@endpush
+@endif
+
 @section('content')
 <section class="hero-section" @if($settings->hero_image_url) style="background-image: url('{{ $settings->hero_image_url }}')" @endif>
     <div class="container hero-content">
@@ -53,7 +59,13 @@
                      data-description="{{ $image->description }}"
                      data-category="{{ $image->category->name }}">
                     <div class="skeleton"></div>
-                    <img src="{{ $image->thumb_url }}" alt="{{ $image->title }}" loading="lazy" decoding="async">
+                    <img src="{{ $image->thumb_url }}"
+                         alt="{{ $image->title }}"
+                         width="600"
+                         height="800"
+                         loading="{{ $loop->index < 4 ? 'eager' : 'lazy' }}"
+                         decoding="async"
+                         @if($loop->index === 0) fetchpriority="high" @endif>
                     <span class="zoom-hint" aria-hidden="true"><i class="bi bi-zoom-in"></i></span>
                 </div>
             </div>

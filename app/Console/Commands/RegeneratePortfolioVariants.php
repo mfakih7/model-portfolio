@@ -126,6 +126,8 @@ class RegeneratePortfolioVariants extends Command
                 || preg_match('/\/(source|upload)\./', $path);
         })->count();
 
+        $this->printSizeReport();
+
         $this->newLine();
         $this->info("Processed: {$processed}");
         $this->info("Failed: {$failed}");
@@ -133,5 +135,46 @@ class RegeneratePortfolioVariants extends Command
         $this->info("Missing thumb (DB): {$missingThumb}");
 
         return $failed > 0 ? self::FAILURE : self::SUCCESS;
+    }
+
+    private function printSizeReport(): void
+    {
+        $this->newLine();
+        $this->info('Variant size report (targets: thumb 20–80 KB, medium 80–200 KB, large 150–500 KB):');
+
+        $targets = [
+            'thumb' => [20, 80],
+            'medium' => [80, 200],
+            'large' => [150, 500],
+        ];
+
+        $oversized = 0;
+
+        foreach (PortfolioImage::all() as $image) {
+            $sizes = PortfolioImageService::variantByteSizes($image);
+            $parts = [];
+
+            foreach (['thumb', 'medium', 'large'] as $variant) {
+                $bytes = $sizes[$variant];
+                if ($bytes === null) {
+                    $parts[] = "{$variant}: missing";
+                    continue;
+                }
+
+                $kb = round($bytes / 1024, 1);
+                [$min, $max] = $targets[$variant];
+                $flag = ($kb > $max || ($variant === 'thumb' && $kb > 100)) ? ' !' : '';
+                if ($flag) {
+                    $oversized++;
+                }
+                $parts[] = "{$variant}: {$kb} KB{$flag}";
+            }
+
+            $this->line("  #{$image->id} {$image->title} — ".implode(', ', $parts));
+        }
+
+        if ($oversized > 0) {
+            $this->warn("  {$oversized} variant(s) exceed target size. Re-run with --force after quality tuning.");
+        }
     }
 }

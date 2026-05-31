@@ -27,15 +27,18 @@ class PortfolioImageService
 
     private int $originalMaxDimension = 2400;
 
-    private int $originalQuality = 88;
+    private int $originalQuality = 85;
+
+    /** Target max file size for thumb variant (bytes). */
+    private int $thumbMaxBytes = 102400;
 
     /**
      * @var array<string, array{width:int, height:?int, crop:bool, quality:int}>
      */
     private array $variants = [
-        'large' => ['width' => 1600, 'height' => null, 'crop' => false, 'quality' => 82],
-        'medium' => ['width' => 900, 'height' => null, 'crop' => false, 'quality' => 80],
-        'thumb' => ['width' => 500, 'height' => null, 'crop' => false, 'quality' => 78],
+        'large' => ['width' => 1600, 'height' => null, 'crop' => false, 'quality' => 80],
+        'medium' => ['width' => 900, 'height' => null, 'crop' => false, 'quality' => 75],
+        'thumb' => ['width' => 500, 'height' => null, 'crop' => false, 'quality' => 68],
     ];
 
     /**
@@ -222,6 +225,24 @@ class PortfolioImageService
         return true;
     }
 
+    /**
+     * File sizes in bytes for each stored variant (null if missing).
+     *
+     * @return array{thumb:?int, medium:?int, large:?int, original:?int}
+     */
+    public static function variantByteSizes(PortfolioImage $image): array
+    {
+        $disk = Storage::disk('public');
+        $sizes = [];
+
+        foreach (['thumb', 'medium', 'large', 'original'] as $name) {
+            $path = $image->getAttribute('image_'.$name) ?: ($name === 'original' ? $image->image_path : null);
+            $sizes[$name] = ($path && $disk->exists($path)) ? $disk->size($path) : null;
+        }
+
+        return $sizes;
+    }
+
     public function deleteVariants(PortfolioImage $image): void
     {
         $reference = $image->image_original
@@ -326,7 +347,18 @@ class PortfolioImageService
                 : $this->scaleToWidth($work, $cfg['width']);
 
             $relative = $dir.'/'.$name.'.'.$format;
-            $this->writeImage($variant, Storage::disk(self::DISK)->path($relative), $format, $cfg['quality']);
+            $absolute = Storage::disk(self::DISK)->path($relative);
+            $this->writeImage($variant, $absolute, $format, $cfg['quality']);
+
+            if ($name === 'thumb' && is_file($absolute) && filesize($absolute) > $this->thumbMaxBytes) {
+                foreach ([65, 60, 55] as $lowerQuality) {
+                    $this->writeImage($variant, $absolute, $format, $lowerQuality);
+                    if (filesize($absolute) <= $this->thumbMaxBytes) {
+                        break;
+                    }
+                }
+            }
+
             imagedestroy($variant);
 
             $paths['image_'.$name] = $relative;

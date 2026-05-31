@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Route;
 
 // Public routes
 Route::get('/', [HomeController::class, 'index'])->name('home');
+Route::get('/portfolio/load-more', [PortfolioController::class, 'loadMore'])->name('portfolio.load-more');
 Route::get('/portfolio/{category?}', [PortfolioController::class, 'index'])->name('portfolio');
 Route::get('/about', [AboutController::class, 'index'])->name('about');
 Route::get('/contact', [ContactController::class, 'index'])->name('contact');
