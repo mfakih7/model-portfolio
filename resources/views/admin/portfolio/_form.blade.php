@@ -2,9 +2,13 @@
 
 <div class="mb-3">
     <label class="form-label">Image {{ $image ? '(leave empty to keep current)' : '*' }}</label>
-    <input type="file" name="image" class="form-control @error('image') is-invalid @enderror" {{ $image ? '' : 'required' }} accept=".jpg,.jpeg,.png,.webp">
+    <input type="file" name="image" id="portfolioImageInput" class="form-control admin-file-input @error('image') is-invalid @enderror" {{ $image ? '' : 'required' }} accept=".jpg,.jpeg,.png,.webp">
     @error('image')<div class="invalid-feedback">{{ $message }}</div>@enderror
-    <small class="text-muted">JPG, JPEG, PNG or WEBP — max 25 MB, up to 6000×6000 pixels. Photos are automatically optimized for the web.</small>
+    <small class="text-muted d-block mt-1">JPG, JPEG, PNG or WEBP — max 25 MB, up to 6000×6000 pixels. Photos are automatically optimized for the web.</small>
+    <div id="imageUploadPreview" class="image-upload-preview d-none mt-3" aria-live="polite">
+        <p class="small text-muted mb-2">Preview</p>
+        <img id="imageUploadPreviewImg" src="" alt="Selected image preview">
+    </div>
 </div>
 
 <div class="mb-3">
@@ -35,27 +39,9 @@
         <input type="number" name="sort_order" class="form-control" value="{{ old('sort_order', $image?->sort_order ?? 0) }}" min="0">
     </div>
     <div class="col-md-6 mb-3 d-flex align-items-end">
-        <div class="form-check">
+        <div class="form-check admin-form-check">
             <input type="checkbox" name="is_featured" value="1" class="form-check-input" id="is_featured" @checked(old('is_featured', $image?->is_featured))>
             <label class="form-check-label" for="is_featured">Featured on homepage</label>
         </div>
     </div>
 </div>
-
-@push('scripts')
-<script>
-(function () {
-    const input = document.querySelector('input[type="file"][name="image"]');
-    const form = input ? input.closest('form') : null;
-    if (!form) return;
-
-    form.addEventListener('submit', function () {
-        const btn = form.querySelector('button[type="submit"]');
-        if (!btn || btn.dataset.loading === '1') return;
-        btn.dataset.loading = '1';
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Uploading and optimizing...';
-    });
-})();
-</script>
-@endpush

@@ -3,20 +3,27 @@
 @section('page_title', 'Portfolio Images')
 
 @section('page_actions')
-<a href="{{ route('admin.portfolio.create') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> Add Image</a>
+<a href="{{ route('admin.portfolio.create') }}" class="btn btn-primary btn-sm admin-btn-action"><i class="bi bi-plus-lg"></i> Add Image</a>
 @endsection
 
 @section('content')
 <div class="admin-card">
     @if($images->count())
-    {{-- Reorder form holds only its CSRF + submit button. The per-row order
-         inputs below are associated to it via the HTML5 `form` attribute, so the
-         table is NOT wrapped in this form and delete forms are never nested. --}}
+    {{-- Reorder form holds only its CSRF + submit button. Order inputs live in
+         #orderInputs and are updated by Sortable on desktop table or mobile cards. --}}
     <form action="{{ route('admin.portfolio.reorder') }}" method="POST" id="reorderForm">@csrf</form>
 
-    <p class="text-muted small">Drag rows to reorder, then click Save Order.</p>
-    <div class="table-responsive">
-        <table class="table table-hover align-middle" id="sortableTable">
+    <div id="orderInputs" class="visually-hidden" aria-hidden="true">
+        @foreach($images as $image)
+        <input type="hidden" name="order[]" value="{{ $image->id }}" form="reorderForm">
+        @endforeach
+    </div>
+
+    <p class="text-muted small mb-3">Drag to reorder, then click Save Order.</p>
+
+    {{-- Desktop table --}}
+    <div class="table-responsive admin-table-desktop d-none d-lg-block">
+        <table class="table table-hover align-middle mb-0" id="sortableTable">
             <thead>
                 <tr>
                     <th width="40"></th>
@@ -36,7 +43,7 @@
                     <td>{{ $image->title }}</td>
                     <td><span class="badge bg-secondary">{{ $image->category->name }}</span></td>
                     <td>@if($image->is_featured)<i class="bi bi-star-fill text-warning"></i>@endif</td>
-                    <td><input type="hidden" name="order[]" value="{{ $image->id }}" form="reorderForm">{{ $image->sort_order }}</td>
+                    <td>{{ $image->sort_order }}</td>
                     <td class="text-end text-nowrap">
                         <a href="{{ route('admin.portfolio.edit', $image) }}" class="btn btn-sm btn-outline-primary">Edit</a>
                         <button type="submit" form="delete-image-{{ $image->id }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this image?')">Delete</button>
@@ -46,11 +53,45 @@
             </tbody>
         </table>
     </div>
-    <button type="submit" form="reorderForm" class="btn btn-secondary btn-sm mt-2">Save Order</button>
 
-    {{-- Standalone delete forms (one per image), referenced by the buttons
-         above via the `form` attribute. Kept outside the table to avoid any
-         nested-form issues. --}}
+    {{-- Mobile cards --}}
+    <div class="admin-mobile-list d-lg-none" id="sortableCards">
+        @foreach($images as $image)
+        <article class="admin-mobile-card portfolio-mobile-card" data-id="{{ $image->id }}">
+            <div class="admin-mobile-card-top">
+                <button type="button" class="admin-card-handle handle" aria-label="Drag to reorder">
+                    <i class="bi bi-grip-vertical"></i>
+                </button>
+                <img src="{{ $image->thumb_url }}" class="portfolio-mobile-thumb" alt="{{ $image->title }}" loading="lazy">
+                <div class="admin-mobile-card-info">
+                    <h6 class="admin-mobile-card-title mb-1">{{ $image->title }}</h6>
+                    <span class="badge bg-secondary">{{ $image->category->name }}</span>
+                </div>
+            </div>
+            <div class="admin-mobile-card-meta">
+                <span class="admin-mobile-meta-item">
+                    <span class="text-muted">Order</span>
+                    <strong>{{ $image->sort_order }}</strong>
+                </span>
+                <span class="admin-mobile-meta-item">
+                    <span class="text-muted">Featured</span>
+                    @if($image->is_featured)
+                        <i class="bi bi-star-fill text-warning"></i>
+                    @else
+                        <span class="text-muted">—</span>
+                    @endif
+                </span>
+            </div>
+            <div class="admin-mobile-card-actions">
+                <a href="{{ route('admin.portfolio.edit', $image) }}" class="btn btn-outline-primary">Edit</a>
+                <button type="submit" form="delete-image-{{ $image->id }}" class="btn btn-outline-danger" onclick="return confirm('Delete this image?')">Delete</button>
+            </div>
+        </article>
+        @endforeach
+    </div>
+
+    <button type="submit" form="reorderForm" class="btn btn-secondary btn-sm mt-3 admin-btn-save-order">Save Order</button>
+
     @foreach($images as $image)
     <form id="delete-image-{{ $image->id }}" action="{{ route('admin.portfolio.destroy', $image) }}" method="POST" class="d-none">
         @csrf @method('DELETE')
@@ -65,18 +106,36 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script>
-const tbody = document.querySelector('#sortableTable tbody');
-if (tbody) {
-    new Sortable(tbody, {
-        handle: '.handle',
-        animation: 150,
-        onEnd: () => {
-            const inputs = tbody.querySelectorAll('input[name="order[]"]');
-            [...tbody.querySelectorAll('tr')].forEach((row, i) => {
-                inputs[i].value = row.dataset.id;
-            });
-        }
-    });
-}
+(function () {
+    const orderInputs = document.getElementById('orderInputs');
+    const tbody = document.querySelector('#sortableTable tbody');
+    const cards = document.getElementById('sortableCards');
+
+    const syncOrder = (container, itemSelector) => {
+        if (!orderInputs || !container) return;
+        const inputs = orderInputs.querySelectorAll('input[name="order[]"]');
+        [...container.querySelectorAll(itemSelector)].forEach((el, i) => {
+            if (inputs[i]) {
+                inputs[i].value = el.dataset.id;
+            }
+        });
+    };
+
+    if (tbody && typeof Sortable !== 'undefined') {
+        new Sortable(tbody, {
+            handle: '.handle',
+            animation: 150,
+            onEnd: () => syncOrder(tbody, 'tr'),
+        });
+    }
+
+    if (cards && typeof Sortable !== 'undefined') {
+        new Sortable(cards, {
+            handle: '.handle',
+            animation: 150,
+            onEnd: () => syncOrder(cards, '.portfolio-mobile-card'),
+        });
+    }
+})();
 </script>
 @endpush

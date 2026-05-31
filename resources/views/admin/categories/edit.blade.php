@@ -4,10 +4,12 @@
 
 @section('content')
 <div class="admin-card">
-    <form action="{{ route('admin.categories.update', $category) }}" method="POST">
+    <form action="{{ route('admin.categories.update', $category) }}" method="POST" class="admin-form">
         @csrf @method('PUT')
         @include('admin.categories._form')
-        <button type="submit" class="btn btn-primary">Update Category</button>
+        <div class="admin-form-actions">
+            <button type="submit" class="btn btn-primary btn-lg admin-btn-submit">Update Category</button>
+        </div>
     </form>
 </div>
 @endsection

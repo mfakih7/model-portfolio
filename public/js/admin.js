@@ -1,4 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
+    initAdminSidebar();
+    initImageUploadPreview();
+    initPortfolioUploadState();
+});
+
+function initAdminSidebar() {
     const toggle = document.getElementById('sidebarToggle');
     const sidebar = document.getElementById('adminSidebar');
     const backdrop = document.getElementById('sidebarBackdrop');
@@ -27,7 +33,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     backdrop?.addEventListener('click', close);
 
-    // Close the drawer after tapping a navigation link on mobile.
     sidebar.querySelectorAll('a.nav-link').forEach((link) => {
         link.addEventListener('click', close);
     });
@@ -38,10 +43,51 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Reset state if the viewport grows back to desktop while the drawer is open.
     window.addEventListener('resize', () => {
         if (window.innerWidth >= 992) {
             close();
         }
     });
-});
+}
+
+function initImageUploadPreview() {
+    const input = document.getElementById('portfolioImageInput');
+    const preview = document.getElementById('imageUploadPreview');
+    const previewImg = document.getElementById('imageUploadPreviewImg');
+
+    if (!input || !preview || !previewImg) {
+        return;
+    }
+
+    input.addEventListener('change', () => {
+        const file = input.files?.[0];
+
+        if (!file || !file.type.startsWith('image/')) {
+            preview.classList.add('d-none');
+            previewImg.removeAttribute('src');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            previewImg.src = event.target?.result || '';
+            preview.classList.remove('d-none');
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+function initPortfolioUploadState() {
+    document.querySelectorAll('form.admin-form').forEach((form) => {
+        form.addEventListener('submit', () => {
+            const btn = form.querySelector('.admin-btn-submit');
+            if (!btn || btn.dataset.loading === '1') {
+                return;
+            }
+
+            btn.dataset.loading = '1';
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Uploading and optimizing...';
+        });
+    });
+}

@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="admin-card">
-    <form action="{{ route('admin.settings.update') }}" method="POST" enctype="multipart/form-data">
+    <form action="{{ route('admin.settings.update') }}" method="POST" enctype="multipart/form-data" class="admin-form">
         @csrf @method('PUT')
 
         <h5 class="mb-3">Model & Hero</h5>
@@ -56,7 +56,9 @@
             </div>
         </div>
 
-        <button type="submit" class="btn btn-primary">Save Settings</button>
+        <div class="admin-form-actions">
+        <button type="submit" class="btn btn-primary btn-lg admin-btn-submit">Save Settings</button>
+        </div>
     </form>
 </div>
 @endsection

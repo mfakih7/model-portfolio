@@ -8,7 +8,7 @@
     <p><strong>Received:</strong> {{ $message->created_at->format('F j, Y \a\t g:i A') }}</p>
     <hr>
     <div class="mb-4" style="white-space: pre-wrap;">{{ $message->message }}</div>
-    <div class="d-flex gap-2">
+    <div class="admin-message-actions d-flex flex-wrap gap-2">
         <form action="{{ route('admin.messages.toggle-read', $message) }}" method="POST">@csrf @method('PATCH')
             <button class="btn btn-outline-secondary">Mark as {{ $message->is_read ? 'Unread' : 'Read' }}</button>
         </form>

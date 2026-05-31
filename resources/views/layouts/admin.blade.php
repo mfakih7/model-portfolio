@@ -14,6 +14,17 @@
             <i class="bi bi-list"></i>
         </button>
         <span class="admin-topbar-brand"><i class="bi bi-gem me-2"></i>Portfolio Admin</span>
+        <div class="admin-topbar-actions">
+            <a href="{{ route('admin.account.edit') }}" class="admin-topbar-icon {{ request()->routeIs('admin.account.*') ? 'active' : '' }}" aria-label="Account settings">
+                <i class="bi bi-person-circle"></i>
+            </a>
+            <form action="{{ route('admin.logout') }}" method="POST" class="admin-topbar-logout">
+                @csrf
+                <button type="submit" class="admin-topbar-icon" aria-label="Logout">
+                    <i class="bi bi-box-arrow-right"></i>
+                </button>
+            </form>
+        </div>
     </header>
 
     <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -45,9 +56,9 @@
             <div class="alert alert-danger alert-dismissible fade show">{{ session('error') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
         @endif
 
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
-            <h1 class="h3 mb-0">@yield('page_title', 'Dashboard')</h1>
-            @yield('page_actions')
+        <div class="admin-page-header d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+            <h1 class="h3 mb-0 admin-page-title">@yield('page_title', 'Dashboard')</h1>
+            <div class="admin-page-actions">@yield('page_actions')</div>
         </div>
 
         @yield('content')

@@ -5,8 +5,8 @@
 @section('page_title', 'Account Settings')
 
 @section('content')
-<div class="admin-card" style="max-width: 720px;">
-    <form action="{{ route('admin.account.update') }}" method="POST" autocomplete="off">
+<div class="admin-card admin-card-narrow">
+    <form action="{{ route('admin.account.update') }}" method="POST" autocomplete="off" class="admin-form">
         @csrf @method('PUT')
 
         <h5 class="mb-3">Profile</h5>
@@ -46,7 +46,9 @@
             </div>
         </div>
 
-        <button type="submit" class="btn btn-primary">Update Account</button>
+        <div class="admin-form-actions">
+        <button type="submit" class="btn btn-primary btn-lg admin-btn-submit">Update Account</button>
+        </div>
     </form>
 </div>
 @endsection

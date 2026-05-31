@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="admin-card">
-    <form action="{{ route('admin.about.update') }}" method="POST" enctype="multipart/form-data">
+    <form action="{{ route('admin.about.update') }}" method="POST" enctype="multipart/form-data" class="admin-form">
         @csrf @method('PUT')
         <div class="mb-3">
             <label class="form-label">Title *</label>
@@ -30,7 +30,9 @@
                 <input type="file" name="additional_image" class="form-control" accept=".jpg,.jpeg,.png,.webp">
             </div>
         </div>
-        <button type="submit" class="btn btn-primary">Save About Content</button>
+        <div class="admin-form-actions">
+        <button type="submit" class="btn btn-primary btn-lg admin-btn-submit">Save About Content</button>
+        </div>
     </form>
 </div>
 @endsection
