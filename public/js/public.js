@@ -51,6 +51,8 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const open = (data) => {
+            img.loading = 'lazy';
+            img.decoding = 'async';
             img.src = data.src || '';
             img.alt = data.title || '';
             setText(title, data.title);

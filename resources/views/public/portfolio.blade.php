@@ -23,12 +23,12 @@
             @foreach($images as $image)
             <div class="portfolio-item" data-lightbox
                  data-src="{{ $image->large_url }}"
-                 data-download="{{ $image->original_url }}"
+                 data-download="{{ $image->large_url }}"
                  data-title="{{ $image->title }}"
                  data-description="{{ $image->description }}"
                  data-category="{{ $image->category->name }}">
                 <div class="skeleton"></div>
-                <img src="{{ $image->medium_url }}" alt="{{ $image->title }}" loading="lazy">
+                <img src="{{ $image->thumb_url }}" alt="{{ $image->title }}" loading="lazy" decoding="async">
                 <span class="zoom-hint" aria-hidden="true"><i class="bi bi-zoom-in"></i></span>
                 <div class="overlay">
                     <span class="text-gold small text-uppercase">{{ $image->category->name }}</span>

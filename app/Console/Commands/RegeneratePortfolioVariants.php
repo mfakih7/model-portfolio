@@ -20,7 +20,12 @@ class RegeneratePortfolioVariants extends Command
         $query = PortfolioImage::query();
 
         if (! $this->option('all')) {
-            $query->whereNull('image_medium');
+            $query->where(function ($q) {
+                $q->whereNull('image_medium')
+                    ->orWhere('image_large', 'like', '%/upload.%')
+                    ->orWhere('image_thumb', 'like', '%/upload.%')
+                    ->orWhere('image_medium', 'like', '%/upload.%');
+            });
         }
 
         $images = $query->get();
@@ -48,9 +53,14 @@ class RegeneratePortfolioVariants extends Command
             try {
                 $legacyPath = $image->image_path;
                 $legacyIsFlatFile = $legacyPath && dirname($legacyPath) === 'portfolio';
+                $oldDir = $this->variantDirectory($image);
 
                 $variants = $service->generateFromPath($source);
                 $image->update($variants);
+
+                if ($oldDir && $oldDir !== dirname($variants['image_original'] ?? '')) {
+                    Storage::disk('public')->deleteDirectory($oldDir);
+                }
 
                 // Remove the old flat (pre-refactor) source file now that WebP
                 // variants exist in a dedicated folder.
@@ -74,12 +84,25 @@ class RegeneratePortfolioVariants extends Command
 
     private function resolveSource(PortfolioImage $image): ?string
     {
-        foreach ([$image->image_original, $image->image_path] as $candidate) {
+        foreach ([$image->image_original, $image->image_path, $image->image_large, $image->image_medium] as $candidate) {
             if ($candidate && Storage::disk('public')->exists($candidate)) {
                 return Storage::disk('public')->path($candidate);
             }
         }
 
         return null;
+    }
+
+    private function variantDirectory(PortfolioImage $image): ?string
+    {
+        $reference = $image->image_original ?: $image->image_path ?: $image->image_large;
+
+        if (! $reference) {
+            return null;
+        }
+
+        $dir = dirname($reference);
+
+        return ($dir && $dir !== '.' && $dir !== 'portfolio') ? $dir : null;
     }
 }

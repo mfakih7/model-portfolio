@@ -42,7 +42,7 @@ class PortfolioImageService
     private array $variants = [
         'large' => ['width' => 1600, 'height' => null, 'crop' => false, 'quality' => 82],
         'medium' => ['width' => 900, 'height' => null, 'crop' => false, 'quality' => 80],
-        'thumb' => ['width' => 400, 'height' => 400, 'crop' => true, 'quality' => 78],
+        'thumb' => ['width' => 500, 'height' => null, 'crop' => false, 'quality' => 78],
     ];
 
     private ?ImageManager $manager = null;
@@ -145,6 +145,20 @@ class PortfolioImageService
         } catch (Throwable $e) {
             Log::error('Portfolio image processing failed', $this->logContext($file, $absolutePath, $e));
 
+            $emergency = $this->attemptEmergencyVariants($absolutePath, $dir, $storedRelative);
+
+            if ($emergency !== null) {
+                Log::warning('Portfolio image saved with emergency variants only.', [
+                    'stored' => $storedRelative,
+                ]);
+
+                return $emergency;
+            }
+
+            Log::critical('Portfolio image has no optimized variants; raw upload used temporarily.', [
+                'stored' => $storedRelative,
+            ]);
+
             return $this->fallbackPaths($storedRelative);
         }
     }
@@ -202,6 +216,55 @@ class PortfolioImageService
         $paths['image_path'] = $paths['image_original'];
 
         return $paths;
+    }
+
+    /**
+     * Last-resort variant generation from a stored upload when the full pipeline fails.
+     *
+     * @return array{image_path:string, image_original:string, image_large:string, image_medium:string, image_thumb:string}|null
+     */
+    private function attemptEmergencyVariants(string $sourcePath, string $dir, string $storedRelative): ?array
+    {
+        try {
+            $format = $this->outputFormat();
+            $image = $this->manager()->read($sourcePath);
+            $image->orient();
+
+            if ($this->shouldFlattenTransparency($this->detectMime($sourcePath))) {
+                $image->blendTransparency('ffffff');
+            }
+
+            $image->scaleDown($this->originalMaxDimension, $this->originalMaxDimension);
+
+            $originalRelative = $dir.'/original.'.$format;
+            $this->encodeToDisk($image, Storage::disk(self::DISK)->path($originalRelative), $format, $this->originalQuality);
+            unset($image);
+
+            $originalAbsolute = Storage::disk(self::DISK)->path($originalRelative);
+            $paths = ['image_original' => $originalRelative];
+
+            foreach ($this->variants as $name => $cfg) {
+                $variant = $this->manager()->read($originalAbsolute);
+
+                if ($cfg['crop']) {
+                    $variant->coverDown($cfg['width'], $cfg['height']);
+                } else {
+                    $variant->scaleDown($cfg['width'], $cfg['height']);
+                }
+
+                $relative = $dir.'/'.$name.'.'.$format;
+                $this->encodeToDisk($variant, Storage::disk(self::DISK)->path($relative), $format, $cfg['quality']);
+                $paths['image_'.$name] = $relative;
+                unset($variant);
+            }
+
+            $paths['image_path'] = $paths['image_original'];
+            $this->removeRawUploadIfReplaced($storedRelative, $paths['image_original']);
+
+            return $paths;
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     /**

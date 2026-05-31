@@ -49,7 +49,7 @@
                 <h4 class="lightbox-title display-font"></h4>
                 <p class="lightbox-desc"></p>
                 <a class="lightbox-download btn btn-sm btn-luxury" href="#" target="_blank" rel="noopener" download>
-                    <i class="bi bi-download me-1"></i> Download full resolution
+                    <i class="bi bi-download me-1"></i> Download image
                 </a>
             </div>
         </div>
