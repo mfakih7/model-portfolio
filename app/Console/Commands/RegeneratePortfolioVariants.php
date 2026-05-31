@@ -44,6 +44,7 @@ class RegeneratePortfolioVariants extends Command
         $verbose = $this->output->isVerbose();
 
         $this->info("Processing {$images->count()} image(s)...".($force ? ' (force overwrite)' : ''));
+        $this->info('Output format: '.$service->outputFormat().' (native GD, no external packages)');
 
         $processed = 0;
         $failed = 0;
@@ -78,19 +79,8 @@ class RegeneratePortfolioVariants extends Command
                 $this->line("    source: {$source}");
             }
 
-            if (! $force && $service->variantsExist([
-                'image_original' => "{$folder}/original.webp",
-                'image_large' => "{$folder}/large.webp",
-                'image_medium' => "{$folder}/medium.webp",
-                'image_thumb' => "{$folder}/thumb.webp",
-            ])) {
-                $paths = [
-                    'image_path' => "{$folder}/original.webp",
-                    'image_original' => "{$folder}/original.webp",
-                    'image_large' => "{$folder}/large.webp",
-                    'image_medium' => "{$folder}/medium.webp",
-                    'image_thumb' => "{$folder}/thumb.webp",
-                ];
+            if (! $force && $service->variantsExist($service->expectedVariantPaths($folder))) {
+                $paths = $service->expectedVariantPaths($folder);
                 $image->update($paths);
                 $this->line("  - {$label}: variants already exist, DB synced.");
                 $processed++;
